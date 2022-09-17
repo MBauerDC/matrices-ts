@@ -1,26 +1,26 @@
 import { Column, Dimension, GenericColumn, GenericMatrix, GenericRow, Matrix, MatrixContent, matrixContentAdder, matrixContentMultiplier, matrixContentSubtractor, Row} from "./matrix";
-import {  GenericMutableColumn, GenericMutableMatrix, GenericMutableRow, MutableColumn, MutableMatrix, MutableRow } from "./mutable";
+import { GenericMutableColumn, GenericMutableMatrix, GenericMutableRow, MutableColumn, MutableMatrix, MutableRow } from "./mutable";
 import { columnToSparseColumn, GenericSparseColumn, GenericSparseRow, rowToSparseRow, SparseData } from "./sparse";
 
-export function createSparseMutableRow<M extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, m: M): SparseMutableRow<M, T> {
+function createSparseMutableRow<M extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, m: M): SparseMutableRow<M, T> {
     return new GenericSparseMutableRow<M, T>(sparseData, m);
 }
 
-export function createSparseMutableColumn<N extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, n: N): SparseMutableColumn<N, T> {
+function createSparseMutableColumn<N extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, n: N): SparseMutableColumn<N, T> {
     return new GenericSparseMutableColumn<N, T>(sparseData, n);   
  }
 
-export interface SparseMutableRow<M extends Dimension, T extends MatrixContent> extends MutableRow<M, T> {
+interface SparseMutableRow<M extends Dimension, T extends MatrixContent> extends MutableRow<M, T> {
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseMutableRow<M, T>;
 };
 
-export interface SparseMutableColumn<N extends Dimension, T extends MatrixContent> extends MutableColumn<N, T> {
+interface SparseMutableColumn<N extends Dimension, T extends MatrixContent> extends MutableColumn<N, T> {
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseMutableColumn<N, T>;
 };
 
-export class GenericSparseMutableRow<M extends Dimension, T extends MatrixContent> extends GenericSparseRow<M, T> implements SparseMutableRow<M, T> {
+class GenericSparseMutableRow<M extends Dimension, T extends MatrixContent> extends GenericSparseRow<M, T> implements SparseMutableRow<M, T> {
     public readonly n: 1 = 1;
     
     public constructor(protected sparseData: SparseData<T>, public readonly m: M) {
@@ -175,7 +175,7 @@ export class GenericSparseMutableRow<M extends Dimension, T extends MatrixConten
 }
 
 
-export class GenericSparseMutableColumn<N extends Dimension, T extends MatrixContent> extends GenericSparseColumn<N, T> implements SparseMutableColumn<N, T> {
+class GenericSparseMutableColumn<N extends Dimension, T extends MatrixContent> extends GenericSparseColumn<N, T> implements SparseMutableColumn<N, T> {
 
     public constructor(protected sparseData: SparseData<T>, public readonly n: N) {
         super(sparseData, n);
@@ -318,7 +318,7 @@ export class GenericSparseMutableColumn<N extends Dimension, T extends MatrixCon
 
 }
 
-export class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements MutableMatrix<N, M, T> {
+class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements MutableMatrix<N, M, T> {
     constructor(protected rows: SparseMutableRow<M, T>[], public readonly n: N, public readonly m: M) {
         if (rows.length !== n) {
             throw new Error('Invalid number of rows');
@@ -554,7 +554,7 @@ export class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends
 }
 
 
-export class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements MutableMatrix<N, M, T> {
+class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements MutableMatrix<N, M, T> {
     constructor(protected columns: SparseMutableColumn<N, T>[], public readonly n: N, public readonly m: M) {
         if (columns.length !== m) {
             throw new Error('Invalid number of columns.');
@@ -823,3 +823,5 @@ export class SparseColumnMatrix<N extends Dimension, M extends Dimension, T exte
         return new SparseColumnMatrix(columns, this.n, (this.m - 1) as O);
     }
 }
+
+export { SparseColumnMatrix, SparseRowMatrix};

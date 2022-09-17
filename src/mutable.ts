@@ -1,6 +1,6 @@
 import { Column, Dimension, GenericMatrix, Matrix, MatrixContent, matrixContentAdder, matrixContentMultiplier, matrixContentSubtractor, Row } from "./matrix";
 
-export interface MutableMatrix<N extends Dimension, M extends Dimension, F extends MatrixContent> extends Matrix<N, M, F> {
+interface MutableMatrix<N extends Dimension, M extends Dimension, F extends MatrixContent> extends Matrix<N, M, F> {
     setValue(i: number, j: number, newValue: F): void;
     add(other: Matrix<N,M,F>): void;
     addScalar(other: F): void;
@@ -26,7 +26,7 @@ export interface MutableMatrix<N extends Dimension, M extends Dimension, F exten
     withoutColumn<O extends Dimension>(atIdx: number): MutableMatrix<N, O, F>;
 }
 
-export class GenericMutableMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> extends GenericMatrix<N, M, T> implements MutableMatrix<N, M, T> {
+class GenericMutableMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> extends GenericMatrix<N, M, T> implements MutableMatrix<N, M, T> {
 
     constructor(
         arrData: T[][] | null,
@@ -194,7 +194,7 @@ export class GenericMutableMatrix<N extends Dimension, M extends Dimension, T ex
     }  
 }
 
-export interface MutableRow<M extends Dimension, T extends MatrixContent> extends MutableMatrix<1, M, T> {
+interface MutableRow<M extends Dimension, T extends MatrixContent> extends MutableMatrix<1, M, T> {
     getTranspose(): MutableColumn<M, T>;
     getRow(i: number): MutableRow<M, T>;
     getColumn(j: number): MutableColumn<1, T>;
@@ -207,7 +207,7 @@ export interface MutableRow<M extends Dimension, T extends MatrixContent> extend
 };
 
 
-export class GenericMutableRow<M extends Dimension, T extends MatrixContent> extends GenericMutableMatrix<1, M, T> implements MutableRow<M, T> {
+class GenericMutableRow<M extends Dimension, T extends MatrixContent> extends GenericMutableMatrix<1, M, T> implements MutableRow<M, T> {
     constructor(
         arrData: T[] = [],
         m: M
@@ -237,7 +237,7 @@ export class GenericMutableRow<M extends Dimension, T extends MatrixContent> ext
     }
 }
 
-export interface MutableColumn<N extends Dimension, T extends MatrixContent> extends MutableMatrix<N, 1, T> {
+interface MutableColumn<N extends Dimension, T extends MatrixContent> extends MutableMatrix<N, 1, T> {
     getTranspose(): MutableRow<N, T>;
     getRow(i: number): MutableRow<1, T>;
     getColumn(j: number): MutableColumn<N, T>;
@@ -249,7 +249,7 @@ export interface MutableColumn<N extends Dimension, T extends MatrixContent> ext
     mapped<G extends MatrixContent>(mapper: (f: T) => G): MutableColumn<N, G>;
 }
 
-export class GenericMutableColumn<N extends Dimension, T extends MatrixContent> extends GenericMutableMatrix<N, 1, T> implements MutableColumn<N, T> {
+class GenericMutableColumn<N extends Dimension, T extends MatrixContent> extends GenericMutableMatrix<N, 1, T> implements MutableColumn<N, T> {
     constructor(
         arrData: T[] = [],
         n: N
@@ -292,3 +292,5 @@ export class GenericMutableColumn<N extends Dimension, T extends MatrixContent> 
         }(this)
     }
 }
+
+export { MutableMatrix, GenericMutableMatrix, MutableRow, GenericMutableRow, MutableColumn, GenericMutableColumn };

@@ -1,6 +1,5 @@
 import { Dimension, GenericMatrix, Matrix, Row } from "./matrix";
 import { GenericSparseRow } from "./sparse";
-import { SparseRowMatrix } from "./sparseMutable";
 
 export module LinearAlgebra {
 

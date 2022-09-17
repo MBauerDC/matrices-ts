@@ -1,28 +1,28 @@
-export type Dimension = number;
-export type MatrixContent = number|Array<any>|Matrix<Dimension, Dimension, MatrixContent>;
+type Dimension = number;
+type MatrixContent = number|Array<any>|Matrix<Dimension, Dimension, MatrixContent>;
 
-export type Adder<T extends MatrixContent> = (a: T, b: T) => T;
-export type Subtractor<T extends MatrixContent> = (a: T, b: T) => T;
-export type Multiplier<T extends MatrixContent> = (a: T, b: T) => T;
-export type Scaler<T extends MatrixContent> = (a: T, s: number) => T;
+type Adder<T extends MatrixContent> = (a: T, b: T) => T;
+type Subtractor<T extends MatrixContent> = (a: T, b: T) => T;
+type Multiplier<T extends MatrixContent> = (a: T, b: T) => T;
+type Scaler<T extends MatrixContent> = (a: T, s: number) => T;
 
-export const numberAdder: Adder<number> = (a: number, b: number) => a + b;
-export const arrayAdder: Adder<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { a.push(...b); return a};
-export const matrixAdder: Adder<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withAdded(b);
+const numberAdder: Adder<number> = (a: number, b: number) => a + b;
+const arrayAdder: Adder<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { a.push(...b); return a};
+const matrixAdder: Adder<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withAdded(b);
 
-export const numberSubtractor: Subtractor<number> = (a: number, b: number) => a - b;
-export const arraySubtractor: Subtractor<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result = a.filter(x => !b.includes(x)); return result; };
-export const matrixSubtractor: Adder<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withSubtracted(b);
+const numberSubtractor: Subtractor<number> = (a: number, b: number) => a - b;
+const arraySubtractor: Subtractor<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result = a.filter(x => !b.includes(x)); return result; };
+const matrixSubtractor: Adder<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withSubtracted(b);
 
-export const numberMultiplier: Multiplier<number> = (a: number, b: number) => a * b;
-export const arrayMultiplier: Multiplier<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result: any[] = []; for (let i = 0; i < a.length; i++) { result.push([a[i], (b[i] ?? null)]); } return result; };
-export const matrixMultiplier: Multiplier<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, O extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<M, O, T>) => a.getMultiplication(b);
+const numberMultiplier: Multiplier<number> = (a: number, b: number) => a * b;
+const arrayMultiplier: Multiplier<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result: any[] = []; for (let i = 0; i < a.length; i++) { result.push([a[i], (b[i] ?? null)]); } return result; };
+const matrixMultiplier: Multiplier<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, O extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<M, O, T>) => a.getMultiplication(b);
 
-export const numberScaler: Scaler<number> = (a: number, s: number) => s * a;
-export const arrayScaler: Scaler<Array<any>> = (a: Array<any>, s: number) => { const max = Math.max(0,s); const result: any[] = []; let i = 0; while (i < max) { result[i] = a; i++ } return result; };
-export const matrixScaler: Scaler<Matrix<Dimension, Dimension, MatrixContent>> = (a: Matrix<Dimension, Dimension, MatrixContent>, s: number) => a.getScaled(s);
+const numberScaler: Scaler<number> = (a: number, s: number) => s * a;
+const arrayScaler: Scaler<Array<any>> = (a: Array<any>, s: number) => { const max = Math.max(0,s); const result: any[] = []; let i = 0; while (i < max) { result[i] = a; i++ } return result; };
+const matrixScaler: Scaler<Matrix<Dimension, Dimension, MatrixContent>> = (a: Matrix<Dimension, Dimension, MatrixContent>, s: number) => a.getScaled(s);
 
-export const matrixContentAdder = <T extends MatrixContent>(a: T, b: T) => {
+const matrixContentAdder = <T extends MatrixContent>(a: T, b: T) => {
     const result: MatrixContent = 
       typeof a === "number" ? 
         numberAdder(a, b as number)  : 
@@ -32,7 +32,7 @@ export const matrixContentAdder = <T extends MatrixContent>(a: T, b: T) => {
     return result;
 };
 
-export const matrixContentSubtractor = <T extends MatrixContent>(a: T, b: T) => {
+const matrixContentSubtractor = <T extends MatrixContent>(a: T, b: T) => {
     const result = 
       typeof a === "number" ? 
         numberSubtractor(a, b as number) : 
@@ -42,7 +42,7 @@ export const matrixContentSubtractor = <T extends MatrixContent>(a: T, b: T) => 
     return result;
 };
 
-export const matrixContentMultiplier = <T extends MatrixContent>(a: T, b: T) => {
+const matrixContentMultiplier = <T extends MatrixContent>(a: T, b: T) => {
     const result = 
       typeof a === "number" ? 
         numberMultiplier(a, b as number) : 
@@ -52,7 +52,7 @@ export const matrixContentMultiplier = <T extends MatrixContent>(a: T, b: T) => 
     return result;
 };
 
-export const matrixContentScaler = <T extends MatrixContent>(a: T, s: number) => {
+const matrixContentScaler = <T extends MatrixContent>(a: T, s: number) => {
     const result = 
       typeof a === "number" ? 
         numberScaler(a, s as number) : 
@@ -62,41 +62,8 @@ export const matrixContentScaler = <T extends MatrixContent>(a: T, s: number) =>
     return result;
 };
 
-export function trace<N extends Dimension, T extends MatrixContent>(matrix: Matrix<N, N, T>): T {
-    let result = 0 as T;
-    for (let i = 0; i < matrix.n; i++) {
 
-        result = matrixContentAdder(result, matrix.getValue(i, i)) as T;
-    }
-    return result;
-}
-
-export function deleteRowAndColumn<N extends Dimension, M extends Dimension, O extends Dimension, P extends Dimension, T extends MatrixContent>(matrix: Matrix<N, M, T>, i: number, j: number): Matrix<O, P, T> {
-    if (i < 0 || i >= matrix.n || j < 0 || j >= matrix.m) {
-        throw new Error('Invalid indices.');
-    }
-    return matrix.withoutRow(i).withoutColumn(j) as Matrix<O, P, T>;
-}
-
-export function cofactor<N extends Dimension, T extends number>(matrix: Matrix<N, N, T>, i: number, j: number): T {
-    return (Math.pow(-1, i + j) * determinant(matrix.withoutRow(i).withoutColumn(j))) as T;
-}
-
-export function determinant<N extends Dimension, T extends number>(matrix: Matrix<N, N, T>): T {
-    if (matrix.n === 1) {
-        return matrix.getValue(0, 0);
-    }
-    if (matrix.n === 2) {
-        return ((matrix.getValue(0, 0) *  matrix.getValue(1, 1)) - (matrix.getValue(0, 1) * matrix.getValue(1, 0))) as T;
-    }
-    let result = 0 as T;
-    for (let i = 0; i < matrix.n; i++) {
-        result = result + (matrix.getValue(i, 0) * cofactor(matrix, i, 0)) as T;
-    }
-    return result;
-}
-
-export interface Matrix<N extends Dimension, M extends Dimension, F extends MatrixContent> extends Iterable<F> {
+interface Matrix<N extends Dimension, M extends Dimension, F extends MatrixContent> extends Iterable<F> {
     readonly n: N;
     readonly m: M;
     getValue(i: number, j: number): F; 
@@ -131,7 +98,7 @@ type InternalMutableMatrixData<N extends Dimension, M extends Dimension, T exten
             at(i: number): T[]|Row<M, T>|Column<N, T>
         };
 
-export class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements Matrix<N, M, T> {
+class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements Matrix<N, M, T> {
   
     protected referenceData: InternalMutableMatrixData<N, M, T>;
     
@@ -487,7 +454,7 @@ export class GenericMatrix<N extends Dimension, M extends Dimension, T extends M
 }
 
 
-export interface Row<M extends Dimension, T extends MatrixContent> extends Matrix<1, M, T> {
+interface Row<M extends Dimension, T extends MatrixContent> extends Matrix<1, M, T> {
     getTranspose(): Column<M, T>;
     getRow(i: number): Row<M, T>;
     getColumn(j: number): Column<1, T>;
@@ -500,7 +467,7 @@ export interface Row<M extends Dimension, T extends MatrixContent> extends Matri
     //toMutable(): MutableRow<M, T>;
 };
 
-export class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMatrix<1, M, T> implements Row<M, T> {
+class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMatrix<1, M, T> implements Row<M, T> {
     
     constructor(
         arrData: T[] = [],
@@ -569,7 +536,7 @@ export class GenericRow<M extends Dimension, T extends MatrixContent> extends Ge
     }
 }
 
-export interface Column<N extends Dimension, T extends MatrixContent> extends Matrix<N, 1, T> {
+interface Column<N extends Dimension, T extends MatrixContent> extends Matrix<N, 1, T> {
     getTranspose(): Row<N, T>;
     getRow(i: number): Row<1, T>;
     getColumn(j: number): Column<N, T>;
@@ -583,7 +550,7 @@ export interface Column<N extends Dimension, T extends MatrixContent> extends Ma
 };
 
 
-export class GenericColumn<N extends Dimension, T extends MatrixContent> extends GenericMatrix<N, 1, T> implements Column<N, T> {
+class GenericColumn<N extends Dimension, T extends MatrixContent> extends GenericMatrix<N, 1, T> implements Column<N, T> {
     constructor(
         arrData: T[] = [],
         n: N
@@ -652,3 +619,4 @@ export class GenericColumn<N extends Dimension, T extends MatrixContent> extends
 }
 
 
+export { Dimension, MatrixContent, Matrix, Row, Column, GenericMatrix, GenericRow, GenericColumn, matrixContentAdder, matrixContentSubtractor, matrixContentScaler, matrixContentMultiplier };

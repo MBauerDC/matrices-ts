@@ -1,17 +1,16 @@
 import { Column, Dimension, GenericColumn, GenericMatrix, GenericRow, Matrix, MatrixContent, Row, matrixContentAdder, matrixContentSubtractor, matrixContentMultiplier, matrixContentScaler} from "./matrix";
-import { MutableColumn, MutableMatrix, MutableRow } from "./mutable";
 
-export type SparseData<T extends MatrixContent> = Record<number, T>;
-export interface SparseRow<M extends Dimension, T extends MatrixContent> extends Row<M, T> {
+type SparseData<T extends MatrixContent> = Record<number, T>;
+interface SparseRow<M extends Dimension, T extends MatrixContent> extends Row<M, T> {
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseRow<M, T>;
 };
-export interface SparseColumn<N extends Dimension, T extends MatrixContent> extends Column<N, T> {
+interface SparseColumn<N extends Dimension, T extends MatrixContent> extends Column<N, T> {
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseColumn<N, T>;
 };
 
-export class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements SparseRow<M, T> {
+class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements SparseRow<M, T> {
     public readonly n: 1 = 1;
     public constructor(protected sparseData: SparseData<T>, public readonly m: M) {}
     
@@ -234,7 +233,7 @@ export class GenericSparseRow<M extends Dimension, T extends MatrixContent> impl
     }
 }
 
-export class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implements SparseColumn<N, T> {
+class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implements SparseColumn<N, T> {
     public readonly m: 1 = 1;
     public constructor(protected sparseData: SparseData<T>, public readonly n: N) {}
     
@@ -450,17 +449,17 @@ export class GenericSparseColumn<N extends Dimension, T extends MatrixContent> i
 
 
 
-export function createSparseRow<M extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, m: M): SparseRow<M, T> {
+function createSparseRow<M extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, m: M): SparseRow<M, T> {
     return new GenericSparseRow(sparseData, m);
 }
 
 
-export function sparseRowToRow<M extends Dimension, T extends MatrixContent>(sparseRow: SparseRow<M, T>): Row<M, T> {
+function sparseRowToRow<M extends Dimension, T extends MatrixContent>(sparseRow: SparseRow<M, T>): Row<M, T> {
     return new GenericRow(Array.from(sparseRow.generateRow(0)), sparseRow.m);
 }
 
 
-export function rowToSparseRow<M extends Dimension, T extends MatrixContent>(row: Row<M, T>): SparseRow<M, T> {
+function rowToSparseRow<M extends Dimension, T extends MatrixContent>(row: Row<M, T>): SparseRow<M, T> {
     const data: Record<number, T> = {};
     for (let i = 0; i < row.m; i++) {
         const currVal = row.getValue(0, i);
@@ -471,11 +470,11 @@ export function rowToSparseRow<M extends Dimension, T extends MatrixContent>(row
     return createSparseRow(data, row.m);
 }
 
-export function sparseColumnToColumn<N extends Dimension, T extends MatrixContent>(sparseColumn: SparseColumn<N, T>): Column<N, T> {
+function sparseColumnToColumn<N extends Dimension, T extends MatrixContent>(sparseColumn: SparseColumn<N, T>): Column<N, T> {
     return new GenericColumn(Array.from(sparseColumn.generateColumn(0)), sparseColumn.n);
 }
 
-export function columnToSparseColumn<N extends Dimension, T extends MatrixContent>(column: Column<N, T>): SparseColumn<N, T> {
+function columnToSparseColumn<N extends Dimension, T extends MatrixContent>(column: Column<N, T>): SparseColumn<N, T> {
     const data: Record<number, T> = {};
     for (let i = 0; i < column.n; i++) {
         const currVal = column.getValue(i, 0);
@@ -486,7 +485,8 @@ export function columnToSparseColumn<N extends Dimension, T extends MatrixConten
     return createSparseColumn(data, column.n);
 }
 
-export function createSparseColumn<N extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, n: N): SparseColumn<N, T> {
+function createSparseColumn<N extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, n: N): SparseColumn<N, T> {
    return new GenericSparseColumn(sparseData, n);   
 }
 
+export { SparseRow, SparseColumn, SparseData, createSparseRow, createSparseColumn, sparseRowToRow, rowToSparseRow, sparseColumnToColumn, columnToSparseColumn };

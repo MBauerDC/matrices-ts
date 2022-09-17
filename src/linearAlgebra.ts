@@ -1,5 +1,5 @@
-import { Dimension, Matrix, Row } from "./matrix";
-import { GenericSparseMutableRow, GenericSparseRow } from "./sparse";
+import { Dimension, GenericMatrix, Matrix, Row } from "./matrix";
+import { GenericSparseRow } from "./sparse";
 import { SparseRowMatrix } from "./sparseMutable";
 
 export module LinearAlgebra {
@@ -50,15 +50,16 @@ export module LinearAlgebra {
         for (let i = 2; i <= p; i++) {
             result = result.getMultiplication(matrix) as X;
         }
+        return result;
     }
 
     export interface ElementaryRowOperation<N extends Dimension> {
         apply<M extends Dimension, T extends number>(matrix: Matrix<N, M, T>): Matrix<N, M, T>;
-        getTransformationMatrix<T extends number>(): SparseRowMatrix<N, N, T>;
+        getTransformationMatrix<T extends number>(): Matrix<N, N, T>;
     }
     
     export class SwapRows<N extends Dimension> implements ElementaryRowOperation<N> {
-        protected memoizedTransformationMatrix: SparseRowMatrix<N, N, any>;
+        protected memoizedTransformationMatrix: Matrix<N, N, any>;
         constructor(public readonly i: number, public readonly j: number, public readonly dimension: N) {
             if (dimension <= i || dimension <= j) {
                 throw new Error('Dimension and indices are incompatible.');
@@ -73,9 +74,9 @@ export module LinearAlgebra {
                     rows.push(new GenericSparseRow<N, any>({[k]: 1}, dimension));
                 }
             }
-            this.memoizedTransformationMatrix = new SparseRowMatrix<N, N, any>(rows, dimension, dimension);
+            this.memoizedTransformationMatrix = new GenericMatrix<N, N, any>(null, rows, null, dimension, dimension);
         }
-        getTransformationMatrix<T extends number>(): SparseRowMatrix<N, N, T> {
+        getTransformationMatrix<T extends number>(): Matrix<N, N, T> {
             return this.memoizedTransformationMatrix;
         }
         apply<M extends Dimension, T extends number>(matrix: Matrix<N, M, T>): Matrix<N, M, T> {
@@ -85,7 +86,7 @@ export module LinearAlgebra {
     
     
     export class ScaleRow<N extends Dimension> implements ElementaryRowOperation<N> {
-        protected memoizedTransformationMatrix: SparseRowMatrix<N, N, any>;
+        protected memoizedTransformationMatrix: Matrix<N, N, any>;
         constructor(public readonly i: number, public readonly factor: number, public readonly dimension: N) {
             if (dimension <= i) {
                 throw new Error('Dimension and indices are incompatible.');
@@ -98,9 +99,9 @@ export module LinearAlgebra {
                     rows.push(new GenericSparseRow<N, any>({[k]: 1}, dimension));
                 }
             }
-            this.memoizedTransformationMatrix = new SparseRowMatrix<N, N, any>(rows, dimension, dimension);
+            this.memoizedTransformationMatrix = new GenericMatrix<N, N, any>(null, rows, null, dimension, dimension);
         }
-        getTransformationMatrix<T extends number>(): SparseRowMatrix<N, N, T> {
+        getTransformationMatrix<T extends number>(): Matrix<N, N, T> {
             return this.memoizedTransformationMatrix;
         }
         apply<M extends Dimension, T extends number>(matrix: Matrix<N, M, T>): Matrix<N, M, T> {
@@ -112,7 +113,7 @@ export module LinearAlgebra {
     }
     
     export class AddScaledRow<N extends Dimension> implements ElementaryRowOperation<N> {
-        protected memoizedTransformationMatrix: SparseRowMatrix<N, N, any>;
+        protected memoizedTransformationMatrix: Matrix<N, N, any>;
         constructor(public readonly i: number, public readonly j: number, public readonly factor: number, public readonly dimension: N) {
             if (dimension <= i || dimension <= j) {
                 throw new Error('Dimension and indices are incompatible.');
@@ -125,9 +126,9 @@ export module LinearAlgebra {
                     rows.push(new GenericSparseRow<N, any>({[k]: 1}, dimension));
                 }
             }
-            this.memoizedTransformationMatrix = new SparseRowMatrix<N, N, any>(rows, dimension, dimension);
+            this.memoizedTransformationMatrix = new GenericMatrix<N, N, any>(null, rows, null, dimension, dimension);
         }
-        getTransformationMatrix<T extends number>(): SparseRowMatrix<N, N, T> {
+        getTransformationMatrix<T extends number>(): Matrix<N, N, T> {
             return this.memoizedTransformationMatrix;
         }
         apply<M extends Dimension, T extends number>(matrix: Matrix<N, M, T>): Matrix<N, M, T> {
@@ -244,26 +245,25 @@ export module LinearAlgebra {
         return result;
     }
 
-    export function id<N extends Dimension, T extends number>(n: N): SparseRowMatrix<N, N, T> {    
-        const rows: GenericSparseMutableRow<N, T>[] = [];
+    export function id<N extends Dimension, T extends number>(n: N): Matrix<N, N, T> {    
+        const rows: GenericSparseRow<N, T>[] = [];
         for (let i = 0; i < n; i++) {
-            const row = new GenericSparseMutableRow({[i]: 1 as T}, n);
+            const row = new GenericSparseRow({[i]: 1 as T}, n);
             rows.push(row);
         }
-        return new SparseRowMatrix<N, N, T>(rows, n, n);
+        return new GenericMatrix<N, N, T>(null, rows, null, n, n);
     }
     
     export class Id {
-        static memoized = new Map<number, SparseRowMatrix<Dimension, Dimension, any>>();
-        static of<N extends Dimension, T extends number>(n: N): SparseRowMatrix<N, N, T> {
+        static memoized = new Map<number, Matrix<Dimension, Dimension, any>>();
+        static of<N extends Dimension, T extends number>(n: N): Matrix<N, N, T> {
             if (Id.memoized.has(n)) {
-                return Id.memoized.get(n) as SparseRowMatrix<N, N, T>;
+                return Id.memoized.get(n) as Matrix<N, N, T>;
             }
             const matrix = id<N, T>(n);
             Id.memoized.set(n, matrix);
             return matrix;
         }
-    }
-    
+    }    
 
 }

@@ -1,4 +1,5 @@
 import { Column, Dimension, GenericColumn, GenericMatrix, GenericRow, Matrix, MatrixContent, Row, matrixContentAdder, matrixContentSubtractor, matrixContentMultiplier, matrixContentScaler} from "./matrix";
+import { SparseMutableRow, SparseMutableColumn, SparseMutableRowMatrix, SparseMutableColumnMatrix, GenericSparseMutableColumn, GenericSparseMutableRow, SparseRowMatrix } from "./sparseMutable";
 
 type SparseData<T extends MatrixContent> = Record<number, T>;
 interface SparseRow<M extends Dimension, T extends MatrixContent> extends Row<M, T> {
@@ -156,11 +157,11 @@ class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements 
         return createSparseRow(data, this.m);
     }
 
-    /*
+    
     toMutable(): SparseMutableRow<M, T> {
         return new GenericSparseMutableRow(this.sparseData, this.m);
     }
-    */
+    
 
     withAddedRow<O extends Dimension>(newRow: Row<M, T>, atIdx: number): Matrix<O, M, T> {
         if (atIdx < 0 || atIdx > 1) {
@@ -377,11 +378,11 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
         return createSparseColumn(data, this.n);
     }
 
-    /*
+    
     toMutable(): SparseMutableColumn<N, T> {
         return new GenericSparseMutableColumn(this.sparseData, this.n);
     }
-    */
+    
 
     withAddedRow<O extends number>(newRow: Row<1, T>, atIdx: number): SparseColumn<O, T> {
         if (atIdx < 0 || atIdx > this.n) {
@@ -489,4 +490,4 @@ function createSparseColumn<N extends Dimension, T extends MatrixContent>(sparse
    return new GenericSparseColumn(sparseData, n);   
 }
 
-export { SparseRow, SparseColumn, SparseData, createSparseRow, createSparseColumn, sparseRowToRow, rowToSparseRow, sparseColumnToColumn, columnToSparseColumn };
+export { SparseRow, SparseColumn, SparseData, GenericSparseRow, GenericSparseColumn, createSparseRow, createSparseColumn, sparseRowToRow, rowToSparseRow, sparseColumnToColumn, columnToSparseColumn };

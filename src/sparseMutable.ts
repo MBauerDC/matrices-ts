@@ -1,4 +1,4 @@
-import { Column, Dimension, GenericColumn, GenericMatrix, GenericRow, Matrix, MatrixContent, matrixContentAdder, matrixContentMultiplier, matrixContentSubtractor, Row} from "./matrix";
+import { Column, Dimension, GenericColumn, GenericRow, Matrix, MatrixContent, matrixContentAdder, matrixContentMultiplier, matrixContentSubtractor, Row} from "./matrix";
 import { GenericMutableColumn, GenericMutableMatrix, GenericMutableRow, MutableColumn, MutableMatrix, MutableRow } from "./mutable";
 import { columnToSparseColumn, GenericSparseColumn, GenericSparseRow, rowToSparseRow, SparseData } from "./sparse";
 
@@ -287,11 +287,11 @@ class GenericSparseMutableColumn<N extends Dimension, T extends MatrixContent> e
         }
     }
 
-    /*
+    
     toMutable(): SparseMutableColumn<N, T> {
         return this as SparseMutableColumn<N, T>;
     }
-    */
+    
 
     withAddedRow<O extends number>(newRow: Row<1, T>, atIdx: number): SparseMutableColumn<O, T> {
         return super.withAddedRow(newRow, atIdx) as SparseMutableColumn<O, T>;
@@ -640,7 +640,7 @@ class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends Mat
             for (let j = 0; j < right.m; j++) {
                 let sum: T = 0 as T;
                 for (let k = 0; k < this.m; k++) {
-                    sum = matrixContentAdder(sum, matrixContentMultiplier(this.columns[k].getValue(i, 0), right.getValue(k, j) as T) as T;
+                    sum = matrixContentAdder(sum, matrixContentMultiplier(this.columns[k].getValue(i, 0), right.getValue(k, j)) as T) as T;
                 }
                 row.push(sum);
             }
@@ -824,4 +824,4 @@ class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends Mat
     }
 }
 
-export { SparseColumnMatrix, SparseRowMatrix};
+export { SparseMutableColumn, SparseMutableRow, SparseColumnMatrix, SparseRowMatrix, GenericSparseMutableRow, GenericSparseMutableColumn,  createSparseMutableColumn, createSparseMutableRow };

@@ -1,9 +1,9 @@
 import { Dimension, GenericMatrix, Matrix, Row } from "./matrix";
 import { GenericSparseRow } from "./sparse";
 
-export module LinearAlgebra {
+module LinearAlgebra {
 
-    export function dotProduct<N extends Dimension, M extends Matrix<1, N, number>|Matrix<N, 1, number>>(a: M, b: M): number {
+    function dotProduct<N extends Dimension, M extends Matrix<1, N, number>|Matrix<N, 1, number>>(a: M, b: M): number {
         let result = 0;
         const areColumns = a.m === 1;
         const size = areColumns ? a.n : a.m;
@@ -15,7 +15,7 @@ export module LinearAlgebra {
         return result;
     }
 
-    export function trace<N extends Dimension, T extends number>(matrix: Matrix<N, N, T>): T {
+    function trace<N extends Dimension, T extends number>(matrix: Matrix<N, N, T>): T {
         let result = 0 as T;
         for (let i = 0; i < matrix.n; i++) {
             result = (result + matrix.getValue(i, i)) as T;
@@ -23,7 +23,7 @@ export module LinearAlgebra {
         return result;
     }
 
-    export function determinant<N extends Dimension, T extends number>(matrix: Matrix<N, N, T>): T {
+    function determinant<N extends Dimension, T extends number>(matrix: Matrix<N, N, T>): T {
         if (matrix.n === 1) {
             return matrix.getValue(0, 0);
         }
@@ -37,11 +37,11 @@ export module LinearAlgebra {
         return result;
     }
 
-    export function cofactor<N extends Dimension, T extends number>(matrix: Matrix<N, N, T>, i: number, j: number): T {
+    function cofactor<N extends Dimension, T extends number>(matrix: Matrix<N, N, T>, i: number, j: number): T {
         return (Math.pow(-1, i + j) * this.determinant(matrix.withoutRow(i).withoutColumn(j))) as T;
     }
 
-    export function power<N extends Dimension, T extends number, X extends Matrix<N, N, T>>(matrix: X, p: number): X {
+    function power<N extends Dimension, T extends number, X extends Matrix<N, N, T>>(matrix: X, p: number): X {
         if (p < 2) {
             return matrix;
         }
@@ -52,12 +52,12 @@ export module LinearAlgebra {
         return result;
     }
 
-    export interface ElementaryRowOperation<N extends Dimension> {
+    interface ElementaryRowOperation<N extends Dimension> {
         apply<M extends Dimension, T extends number>(matrix: Matrix<N, M, T>): Matrix<N, M, T>;
         getTransformationMatrix<T extends number>(): Matrix<N, N, T>;
     }
     
-    export class SwapRows<N extends Dimension> implements ElementaryRowOperation<N> {
+    class SwapRows<N extends Dimension> implements ElementaryRowOperation<N> {
         protected memoizedTransformationMatrix: Matrix<N, N, any>;
         constructor(public readonly i: number, public readonly j: number, public readonly dimension: N) {
             if (dimension <= i || dimension <= j) {
@@ -84,7 +84,7 @@ export module LinearAlgebra {
     }
     
     
-    export class ScaleRow<N extends Dimension> implements ElementaryRowOperation<N> {
+    class ScaleRow<N extends Dimension> implements ElementaryRowOperation<N> {
         protected memoizedTransformationMatrix: Matrix<N, N, any>;
         constructor(public readonly i: number, public readonly factor: number, public readonly dimension: N) {
             if (dimension <= i) {
@@ -111,7 +111,7 @@ export module LinearAlgebra {
         }
     }
     
-    export class AddScaledRow<N extends Dimension> implements ElementaryRowOperation<N> {
+    class AddScaledRow<N extends Dimension> implements ElementaryRowOperation<N> {
         protected memoizedTransformationMatrix: Matrix<N, N, any>;
         constructor(public readonly i: number, public readonly j: number, public readonly factor: number, public readonly dimension: N) {
             if (dimension <= i || dimension <= j) {
@@ -138,7 +138,7 @@ export module LinearAlgebra {
         }
     }
     
-    export class ElementaryRowOperations {
+    class ElementaryRowOperations {
         
         protected static memo: Record<string, ElementaryRowOperation<any>> = {};
     
@@ -204,7 +204,7 @@ export module LinearAlgebra {
         
     }
 
-    export function reducedRowEchelonForm<N extends Dimension, M extends Dimension, T extends number>(matrix: Matrix<N, M, T>): Matrix<N, M, T> {
+    function reducedRowEchelonForm<N extends Dimension, M extends Dimension, T extends number>(matrix: Matrix<N, M, T>): Matrix<N, M, T> {
         const rowCount = matrix.n;
         const columnCount = matrix.m;
         const rows: Row<M, T>[] = [];
@@ -244,7 +244,7 @@ export module LinearAlgebra {
         return result;
     }
 
-    export function id<N extends Dimension, T extends number>(n: N): Matrix<N, N, T> {    
+    function id<N extends Dimension, T extends number>(n: N): Matrix<N, N, T> {    
         const rows: GenericSparseRow<N, T>[] = [];
         for (let i = 0; i < n; i++) {
             const row = new GenericSparseRow({[i]: 1 as T}, n);
@@ -253,7 +253,7 @@ export module LinearAlgebra {
         return new GenericMatrix<N, N, T>(null, rows, null, n, n);
     }
     
-    export class Id {
+    class Id {
         static memoized = new Map<number, Matrix<Dimension, Dimension, any>>();
         static of<N extends Dimension, T extends number>(n: N): Matrix<N, N, T> {
             if (Id.memoized.has(n)) {
@@ -266,3 +266,5 @@ export module LinearAlgebra {
     }    
 
 }
+
+export { LinearAlgebra };

@@ -1,6 +1,6 @@
 import { Column, Dimension, GenericColumn, GenericMatrix, GenericRow, Matrix, MatrixContent, matrixContentAdder, matrixContentMultiplier, matrixContentSubtractor, Row} from "./matrix";
 import {  GenericMutableColumn, GenericMutableMatrix, GenericMutableRow, MutableColumn, MutableMatrix, MutableRow } from "./mutable";
-import { columnToSparseColumn, GenericSparseRow, rowToSparseRow, SparseData } from "./sparse";
+import { columnToSparseColumn, GenericSparseColumn, GenericSparseRow, rowToSparseRow, SparseData } from "./sparse";
 
 export function createSparseMutableRow<M extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, m: M): SparseMutableRow<M, T> {
     return new GenericSparseMutableRow<M, T>(sparseData, m);
@@ -88,7 +88,7 @@ export class GenericSparseMutableRow<M extends Dimension, T extends MatrixConten
         for (let j = 0; j < this.m; j++) {
             const currVal = (this.sparseData[j] || 0);
             const otherVal = other.getValue(0, j);
-            const newVal = matrixContentAdder(currVal + otherVal);
+            const newVal = matrixContentAdder(currVal, otherVal);
             if (newVal !== currVal) {
                 this.sparseData[j] = newVal as T;
             }
@@ -162,8 +162,8 @@ export class GenericSparseMutableRow<M extends Dimension, T extends MatrixConten
     }
 
     
-    withoutRow<O extends Dimension, P extends Dimension>(rowIdx: number): MutableMatrix<O, M, T> {
-        return (super.withoutRow(rowIdx) as Matrix<O, M, T>).toMutable() as MutableMatrix<O, M, T>;
+    withoutRow<O extends Dimension>(rowIdx: number): MutableMatrix<O, M, T> {
+        return super.withoutRow(rowIdx) as Matrix<O, M, T> as MutableMatrix<O, M, T>;
     }
     
 
@@ -239,7 +239,7 @@ export class GenericSparseMutableColumn<N extends Dimension, T extends MatrixCon
         for (let i = 0; i < this.n; i++) {
             const currVal = (this.sparseData[i] || 0);
             const otherVal = other.getValue(i, 0);
-            const newVal = currVal + otherVal;
+            const newVal = matrixContentAdder(currVal, otherVal);
             if (newVal !== currVal) {
                 this.sparseData[i] = newVal as T;
             }
@@ -287,9 +287,11 @@ export class GenericSparseMutableColumn<N extends Dimension, T extends MatrixCon
         }
     }
 
+    /*
     toMutable(): SparseMutableColumn<N, T> {
         return this as SparseMutableColumn<N, T>;
     }
+    */
 
     withAddedRow<O extends number>(newRow: Row<1, T>, atIdx: number): SparseMutableColumn<O, T> {
         return super.withAddedRow(newRow, atIdx) as SparseMutableColumn<O, T>;
@@ -400,9 +402,9 @@ export class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends
         for (let i = 0; i < this.n; i++) {
             const newRowData = [];
             for (let j = 0; j < right.m; j++) {
-                let sum = 0;
+                let sum: T = 0 as T;
                 for (let k = 0; k < right.n; k++) {
-                    sum += this.rows[i].getValue(0, k) * right.getValue(k, j);
+                    sum = matrixContentAdder(sum, this.rows[i].getValue(0, k) * right.getValue(k, j));
                 }
                 newRowData.push(sum as T);
             }
@@ -528,7 +530,7 @@ export class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends
     }
 
     withAddedColumn<O extends number>(newColumn: Column<N, T>, atIdx: number): MutableMatrix<N, O, T> {
-        const rows = [];
+        const rows: SparseMutableRow<O, T>[] = [];
         for (let i = 0; i < this.n; i++) {
             const valToAdd = newColumn.getValue(i, 0);
             rows.push(this.rows[i].withAddedColumn(new GenericColumn([valToAdd], 1), atIdx) as SparseMutableRow<O, T>);
@@ -590,7 +592,7 @@ export class SparseColumnMatrix<N extends Dimension, M extends Dimension, T exte
     }
 
     getTranspose(): SparseRowMatrix<M, N, T> {
-        const rows = [];
+        const rows: SparseMutableRow<M, T>[] = [];
         for (let j = 0; j < this.m; j++) {
             rows.push(new GenericSparseMutableRow(this.columns[j].getSparseData(), this.n));
         }
@@ -636,11 +638,11 @@ export class SparseColumnMatrix<N extends Dimension, M extends Dimension, T exte
         for (let i = 0; i < this.n; i++) {
             const row: T[] = [];
             for (let j = 0; j < right.m; j++) {
-                let sum = 0;
+                let sum: T = 0 as T;
                 for (let k = 0; k < this.m; k++) {
-                    sum += this.columns[k].getValue(i, 0) * right.getValue(k, j);
+                    sum = matrixContentAdder(sum, matrixContentMultiplier(this.columns[k].getValue(i, 0), right.getValue(k, j) as T) as T;
                 }
-                row.push(sum as T);
+                row.push(sum);
             }
             rows.push(row);
         }

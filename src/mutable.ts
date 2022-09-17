@@ -38,7 +38,6 @@ class GenericMutableMatrix<N extends Dimension, M extends Dimension, T extends M
         super(arrData, rowData as Row<M, T>[], columnData as Column<N, T>[], n, m);
     }
 
-
     public setValue(row: number, col: number, value: T): void {
       this.referenceData.setValue(row, col, value);
     }

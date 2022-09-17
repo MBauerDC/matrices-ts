@@ -761,10 +761,6 @@ class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends Mat
         }
     }
 
-    toMutable(): MutableMatrix<N, M, T> {
-        return this;
-    }
-
     withAddedRow<O extends number>(newRow: Row<M, T>, atIdx: number): MutableMatrix<O, M, T> {
         if (atIdx < 0 || atIdx > this.n) {
             throw new Error('Invalid row index');

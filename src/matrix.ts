@@ -82,7 +82,6 @@ interface Matrix<N extends Dimension, M extends Dimension, F extends MatrixConte
     withSubtracted(other: Matrix<N, M, F>): Matrix<N, M, F>;
     withSubtractedScalar(other: F): Matrix<N, M, F>;
     mapped<G extends MatrixContent>(mapper: (value: F) => G): Matrix<N, M, G>;
-    toMutable(): MutableMatrix<N, M, F>;
 
     withAddedRow<O extends Dimension>(newRow: Row<M, F>, atIdx: number): Matrix<O, M, F>;
     withoutRow<O extends Dimension>(atIdx: number): Matrix<O, M, F>;
@@ -383,20 +382,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
       data.push(row);
     }
     return new GenericMatrix<N, M, G>(data, null, null, this.n, this.m);
-  }
-  
-  
-  public toMutable(): MutableMatrix<N, M, T> {
-    if (this.arrData !== null) {
-      return new GenericMutableMatrix<N, M, T>(this.arrData, null, null, this.n, this.m);
-    } else if (this.rowData !== null) {
-      return new GenericMutableMatrix<N, M, T>(null, this.rowData.map(x => x.toMutable()) as MutableRow<M, T>[], null, this.n, this.m);
-    } else if (this.columnData !== null) {
-      return new GenericMutableMatrix<N, M, T>(null, null, this.columnData.map(x => x.toMutable()) as MutableColumn<N, T>[], this.n, this.m);
-    }
-    throw new Error('Invalid matrix data.');
-  }
-  
+  }  
 
   public withAddedRow<O extends Dimension>(newRow: Row<M, T>, atIdx: number): Matrix<O, M, T> {
       const rows: Row<M, T>[] = [];
@@ -466,7 +452,6 @@ interface Row<M extends Dimension, T extends MatrixContent> extends Matrix<1, M,
     withSubtractedScalar(other: T): Row<M, T>;
     getScaled(other: T): Row<M, T>;
     mapped<G extends MatrixContent>(f: (value: T) => G): Row<M, G>;
-    toMutable(): MutableRow<M, T>;
 };
 
 class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMatrix<1, M, T> implements Row<M, T> {
@@ -548,7 +533,6 @@ interface Column<N extends Dimension, T extends MatrixContent> extends Matrix<N,
     withSubtractedScalar(other: T): Column<N, T>;
     getScaled(other: T): Column<N, T>;
     mapped<G extends MatrixContent>(mapper: (f: T) => G): Column<N, G>;
-    toMutable(): MutableColumn<N, T>;
 };
 
 

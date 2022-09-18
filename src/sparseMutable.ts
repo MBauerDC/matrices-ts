@@ -14,13 +14,26 @@ interface SparseMutableRow<M extends Dimension, T extends MatrixContent> extends
     isSparse: true;
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseMutableRow<M, T>;
+    withAddedRow<O extends Dimension = 2>(newRow: Row<M, T>, atIdx: number): SparseRowMutableMatrix<O, M, T>;
+    withAddedColumn<O extends Dimension>(newColumn: Column<1, T>, atIdx: number): SparseMutableRow<O, T>;
+    withoutRow<O extends Dimension = 0>(atIdx: number): SparseRowMutableMatrix<O, M, T>;
+    withoutColumn<O extends Dimension>(atIdx: number): SparseMutableRow<O, T>;
+    getScaled(scalar: T): SparseMutableRow<M, T>;
+    getTranspose(): SparseMutableColumn<M, T>;
 };
 
 interface SparseMutableColumn<N extends Dimension, T extends MatrixContent> extends MutableColumn<N, T> {
     isSparse: true;
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseMutableColumn<N, T>;
+    withAddedRow<O extends Dimension>(newRow: Row<1, T>, atIdx: number): SparseMutableColumn<O, T>;
+    withAddedColumn<O extends Dimension = 2>(newColumn: Column<N, T>, atIdx: number): SparseColumnMutableMatrix<N, O, T>;
+    withoutRow<O extends Dimension>(atIdx: number): SparseMutableColumn<O, T>;
+    withoutColumn<O extends Dimension = 0>(atIdx: number): SparseColumnMutableMatrix<N, O, T>;
+    getScaled(scalar: T): SparseMutableColumn<N, T>;
+    getTranspose(): SparseMutableRow<N, T>;
 };
+
 
 class GenericSparseMutableRow<M extends Dimension, T extends MatrixContent> extends GenericSparseRow<M, T> implements SparseMutableRow<M, T> {
     public readonly n: 1 = 1;
@@ -139,38 +152,30 @@ class GenericSparseMutableRow<M extends Dimension, T extends MatrixContent> exte
         }
     }
 
-    toMutable(): SparseMutableRow<M, T> {
-        return this as SparseMutableRow<M, T>;        
-    }
-
-    
-    withAddedRow<O extends Dimension>(newRow: Row<M, T>, atIdx: number): SparseRowMutableMatrix<O, M, T> {
-        if (atIdx < 0 || atIdx > this.n) {
-            throw new Error('Invalid row index');
-        }
+    withAddedRow<O extends Dimension = 2>(newRow: Row<M, T>, atIdx: number): SparseRowMutableMatrix<O, M, T> {
+        if (atIdx < 0 || atIdx > 1) {
+          throw new Error('Invalid row index');
+        }     
         const newRows: Array<SparseMutableRow<M, T>> = [];
-        for (let i = 0; i < this.n; i++) {
-            if (i === atIdx) {
-                newRows.push(rowToSparseRow(newRow) as  SparseMutableRow<M, T>);
-            }
+        for (let i = 0; i <= 1; i++) {
+          if (i === atIdx) {
+            newRows.push(toMutable(rowToSparseRow(newRow)) as  SparseMutableRow<M, T>);
+          } else {
             newRows.push(this.getRow(i));
+          }
         }
-        return new SparseRowMutableMatrix(newRows, 2 as O, this.m);
+        return new SparseRowMutableMatrix<O, M, T>(newRows, 2 as O, this.m);
     }
     
-
     withAddedColumn<O extends Dimension>(newCol: Column<1, T>, atIdx: number): SparseMutableRow<O, T> {
         return super.withAddedColumn(newCol, atIdx) as SparseMutableRow<O, T>;  
     }
 
-    
-    withoutRow<O extends Dimension>(rowIdx: number): MutableMatrix<O, M, T> {
-        return super.withoutRow(rowIdx) as Matrix<O, M, T> as MutableMatrix<O, M, T>;
+    withoutRow<O extends Dimension = 0>(rowIdx: number): SparseRowMutableMatrix<O, M, T> {
+        return super.withoutRow(rowIdx) as SparseRowMutableMatrix<O, M, T>;
     }
     
-
     withoutColumn<O extends Dimension>(colIdx: number): SparseMutableRow<O, T> {
-
        return super.withoutColumn(colIdx) as SparseMutableRow<O, T>;
     }
 
@@ -289,17 +294,11 @@ class GenericSparseMutableColumn<N extends Dimension, T extends MatrixContent> e
         }
     }
 
-    
-    toMutable(): SparseMutableColumn<N, T> {
-        return this as SparseMutableColumn<N, T>;
-    }
-    
-
     withAddedRow<O extends number>(newRow: Row<1, T>, atIdx: number): SparseMutableColumn<O, T> {
         return super.withAddedRow(newRow, atIdx) as SparseMutableColumn<O, T>;
     }
 
-    withAddedColumn<O extends number>(newColumn: Column<N, T>, atIdx: number): SparseColumnMutableMatrix<N, O, T> {
+    withAddedColumn<O extends number = 2>(newColumn: Column<N, T>, atIdx: number): SparseColumnMutableMatrix<N, O, T> {
         if (atIdx < 0 || atIdx > 1) {
             throw new Error('Invalid index.');
         }
@@ -312,13 +311,18 @@ class GenericSparseMutableColumn<N extends Dimension, T extends MatrixContent> e
         return super.withoutRow(atIdx) as SparseMutableColumn<O, T>;
     }
 
-    withoutColumn<O extends number>(atIdx: number): MutableMatrix<any, any, T> {
-        return super.withoutColumn(atIdx) as MutableMatrix<any, any, T>;
+    withoutColumn<O extends number = 0>(atIdx: number): SparseColumnMutableMatrix<N, O, T> {
+        return super.withoutColumn(atIdx) as SparseColumnMutableMatrix<N, O, T>;
     }
 
 }
 
 class SparseRowMutableMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> extends SparseRowImmutableMatrix<N, M, T> {
+
+    constructor(protected rows: SparseMutableRow<M, T>[], public readonly n: N, public readonly m: M) {
+        super(rows, n, m);
+    }
+
     setValue(i: number, j: number, newValue: T): void {
         if (i < 0 || i >= this.n) {
             throw new Error('Invalid row');
@@ -365,14 +369,35 @@ class SparseRowMutableMatrix<N extends Dimension, M extends Dimension, T extends
         }
     }
 
-    toMutable(): MutableMatrix<N, M, T> {
-        return this;
+    withAddedRow<O extends Dimension>(newRow: Row<M, T>, atIdx: number): SparseRowMutableMatrix<O, M, T> {
+        return super.withAddedRow(newRow, atIdx) as SparseRowMutableMatrix<O, M, T>;
+    }
+
+    withAddedColumn<O extends Dimension>(newColumn: Column<N, T>, atIdx: number): SparseMutableMatrix<N, O, T> {
+        return super.withAddedColumn(newColumn, atIdx) as SparseMutableMatrix<N, O, T>;
+    }
+
+    withoutRow<O extends Dimension>(atIdx: number): SparseRowMutableMatrix<O, M, T> {
+        return super.withoutRow(atIdx) as SparseRowMutableMatrix<O, M, T>;
+    }
+
+    withoutColumn<O extends number>(atIdx: number): SparseRowMutableMatrix<N, O, T> {
+        return super.withoutColumn(atIdx) as SparseRowMutableMatrix<N, O, T>;
+    }
+
+    getScaled(other: T): SparseRowMutableMatrix<N, M, T> {
+        const newRows = this.rows.map(row => row.getScaled(other));
+        return new SparseRowMutableMatrix(newRows, this.n, this.m);
     }
 }
 
 
 class SparseColumnMutableMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> extends SparseColumnImmutableMatrix<N, M, T> {
     
+    constructor(protected columns: SparseMutableColumn<N, T>[], public readonly n: N, public readonly m: M) {
+        super(columns, n, m);
+    }
+
     setValue(i: number, j: number, newValue: T): void {
         if (i < 0 || i >= this.n) {
             throw new Error('Invalid row');
@@ -417,6 +442,27 @@ class SparseColumnMutableMatrix<N extends Dimension, M extends Dimension, T exte
         for (let j = 0; j < this.m; j++) {
             this.columns[j].mapInPlace(mapper);
         }
+    }
+
+    withAddedRow<O extends Dimension>(newRow: Row<M, T>, atIdx: number): SparseColumnMutableMatrix<O, M, T> {
+        return super.withAddedRow(newRow, atIdx) as SparseColumnMutableMatrix<O, M, T>;
+    }
+
+    withAddedColumn<O extends Dimension>(newColumn: Column<N, T>, atIdx: number): SparseColumnMutableMatrix<N, O, T> {
+        return super.withAddedColumn(newColumn, atIdx) as SparseColumnMutableMatrix<N, O, T>;
+    }
+
+    withoutRow<O extends Dimension>(atIdx: number): SparseColumnMutableMatrix<O, M, T> {
+        return super.withoutRow(atIdx) as SparseColumnMutableMatrix<O, M, T>;
+    }
+
+    withoutColumn<O extends number>(atIdx: number): SparseColumnMutableMatrix<N, O, T> {
+        return super.withoutColumn(atIdx) as SparseColumnMutableMatrix<N, O, T>;
+    }
+
+    getScaled(other: T): SparseColumnMutableMatrix<N, M, T> {
+        const newCols = this.columns.map(col => col.getScaled(other));
+        return new SparseColumnMutableMatrix(newCols, this.n, this.m);
     }
 }
 

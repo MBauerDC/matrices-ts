@@ -452,6 +452,9 @@ interface Row<M extends Dimension, T extends MatrixContent> extends Matrix<1, M,
     withSubtractedScalar(other: T): Row<M, T>;
     getScaled(other: T): Row<M, T>;
     mapped<G extends MatrixContent>(f: (value: T) => G): Row<M, G>;
+
+    foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G;
+    foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G;
 };
 
 class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMatrix<1, M, T> implements Row<M, T> {
@@ -461,6 +464,14 @@ class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMa
         m: M
     ) {
       super([arrData], null, null, 1, m);
+    }
+
+    public getTranspose(): Column<M, T> {
+      const newData: T[] = [];
+      for (let i = 0; i < this.m; i++) {
+        newData.push(this.referenceData.getValue(0, i));
+      }
+      return new GenericColumn<M, T>(newData, this.m);
     }
 
     getRow(i: number): Row<M, T> {
@@ -498,7 +509,7 @@ class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMa
     }
 
     mapped<F extends MatrixContent>(f: (value: T) => F): Row<M, F> {
-        return super.mapped(f) as Matrix<1, M, F> as Row<M, F>;
+        return super.mapped(f) as Row<M, F>;
     }
 
     public at(index: number): T {
@@ -521,6 +532,22 @@ class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMa
             }
         }(this)
     }
+
+    foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G {
+        let acc = init;
+        for (let i = 0; i < this.m; i++) {
+            acc = f(acc, this.at(i));
+        }
+        return acc;
+    }
+
+    foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G {
+        let acc = init;
+        for (let i = this.m - 1; i >= 0; i--) {
+            acc = f(acc, this.at(i));
+        }
+        return acc;
+    }
 }
 
 interface Column<N extends Dimension, T extends MatrixContent> extends Matrix<N, 1, T> {
@@ -533,6 +560,8 @@ interface Column<N extends Dimension, T extends MatrixContent> extends Matrix<N,
     withSubtractedScalar(other: T): Column<N, T>;
     getScaled(other: T): Column<N, T>;
     mapped<G extends MatrixContent>(mapper: (f: T) => G): Column<N, G>;
+    foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G;
+    foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G;
 };
 
 
@@ -542,6 +571,14 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
         n: N
     ) {
       super(arrData.map((v: T) => [v]), null, null, n, 1);
+    }
+
+    public getTranspose(): Row<N, T> {
+      const newData: T[] = [];
+      for (let i = 0; i < this.n; i++) {
+        newData.push(this.referenceData.getValue(i, 0));
+      }
+      return new GenericRow<N, T>(newData, this.n);
     }
 
     withAdded(other: Column<N, T>): Column<N, T> {
@@ -565,7 +602,7 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
     }
 
     mapped<G extends MatrixContent>(f: (value: T) => G): Column<N, G> {
-        return super.mapped(f) as Matrix<N, 1, G> as Column<N, G>;
+        return super.mapped(f) as Column<N, G>;
     }
 
     public getRow(i: number): Row<1, T> {
@@ -602,6 +639,22 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
             }
         }(this)
     }
+
+    foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G {
+      let acc = init;
+      for (let i = 0; i < this.n; i++) {
+          acc = f(acc, this.at(i));
+      }
+      return acc;
+  }
+
+    foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G {
+      let acc = init;
+      for (let i = this.n - 1; i >= 0; i--) {
+          acc = f(acc, this.at(i));
+      }
+      return acc;
+  }
 }
 
 export { Dimension, MatrixContent, Matrix, Row, Column, GenericMatrix, GenericRow, GenericColumn, matrixContentAdder, matrixContentSubtractor, matrixContentScaler, matrixContentMultiplier };

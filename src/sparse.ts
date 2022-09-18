@@ -228,6 +228,23 @@ class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements 
             }
         }(this)
     }
+
+    foldLeft<G extends any>(fn: (acc: G, value: T) => G, init: G): G {
+        let acc = init;
+        for (const value of this) {
+            acc = fn(acc, value);
+        }
+        return acc;
+    }
+
+    foldRight<G extends unknown>(f: (acc: G, value: T) => G, init: G): G {
+        let acc = init;
+        const arr: T[] = Array.from(this.generateRow(0));
+        for (let i = arr.length - 1; i >= 0; i--) {
+            acc = f(acc, arr[i]);
+        }
+        return acc;
+    }
 }
 
 class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implements SparseColumn<N, T> {
@@ -256,7 +273,7 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
         return this.sparseData[index] || 0 as T;
     }
     
-    getTranspose(): Matrix<1, N, T> {
+    getTranspose(): SparseRow<N, T> {
         return createSparseRow(this.sparseData, this.n);
     }
 
@@ -322,7 +339,7 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
         return createSparseColumn(data, this.n);
     }
 
-    withAdded(other: Matrix<N, 1, T>): Matrix<N, 1, T> {
+    withAdded(other: Matrix<N, 1, T>): SparseColumn<N, T> {
         const data: Record<number, T> = {};
         for (let j = 0; j < this.n; j++) {
             const newVal = matrixContentAdder((this.sparseData[j] || 0), other.getValue(j, 0));
@@ -333,7 +350,7 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
         return createSparseColumn(data, this.n);
     }
 
-    withAddedScalar(other: T): Matrix<N, 1, T> {
+    withAddedScalar(other: T): SparseColumn<N, T> {
         const data: Record<number, T> = {};
         for (let j = 0; j < this.n; j++) {
             const newVal = matrixContentAdder((this.sparseData[j] || 0), other);
@@ -344,7 +361,7 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
         return createSparseColumn(data, this.n);
     }
 
-    withSubtracted(other: Matrix<N, 1, T>): Matrix<N, 1, T> {
+    withSubtracted(other: Matrix<N, 1, T>): SparseColumn<N, T> {
         const data: Record<number, T> = {};
         for (let j = 0; j < this.n; j++) {
             const newVal = matrixContentAdder((this.sparseData[j] || 0), other.getValue(j, 0));
@@ -435,6 +452,23 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
                 return {value: null, done: true};
             }
         }(this)
+    }
+
+    foldLeft<G extends any>(fn: (acc: G, value: T) => G, init: G): G {
+        let acc = init;
+        for (const value of this) {
+            acc = fn(acc, value);
+        }
+        return acc;
+    }
+
+    foldRight<G extends unknown>(f: (acc: G, value: T) => G, init: G): G {
+        let acc = init;
+        const arr: T[] = Array.from(this.generateColumn(0));
+        for (let i = arr.length - 1; i >= 0; i--) {
+            acc = f(acc, arr[i]);
+        }
+        return acc;
     }
 
 }

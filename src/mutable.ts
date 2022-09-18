@@ -161,7 +161,6 @@ class GenericMutableMatrix<N extends Dimension, M extends Dimension, T extends M
       }
     }
   
-  
     public scale(other: T): void {
       if (other !== 1) {
         for (let i = 0; i < this.n; i++) {
@@ -203,56 +202,106 @@ interface MutableRow<M extends Dimension, T extends MatrixContent> extends Mutab
     getScaled(other: T): MutableRow<M, T>;
     mapped<G extends MatrixContent>(f: (value: T) => G): MutableRow<M, G>;
     withAddedRow<O extends Dimension = 2>(row: Row<M, T>, atIdx: number): MutableMatrix<O, M, T>;
-    withAddedColumn<O extends Dimension>(column: Column<1, T>, atIdx: number): MutableMatrix<1, O, T>;
+    withAddedColumn<O extends Dimension>(column: Column<1, T>, atIdx: number): MutableRow<O, T>;
     withoutRow<O extends Dimension = 0>(atIdx: number): MutableMatrix<O, M, T>;
-    withoutColumn<O extends Dimension>(atIdx: number): MutableMatrix<1, O, T>;
+    withoutColumn<O extends Dimension>(atIdx: number): MutableRow<O, T>;
+    foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G;
+    foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G;
 };
 
 
 class GenericMutableRow<M extends Dimension, T extends MatrixContent> extends GenericMutableMatrix<1, M, T> implements MutableRow<M, T> {
-    constructor(
-        arrData: T[] = [],
-        m: M
-    ) {
-      super([arrData], null, null, 1, m);
-    }
+  constructor(
+    arrData: T[] = [],
+    m: M
+  ) {
+    super([arrData], null, null, 1, m);
+  }
 
-    public at(index: number): T {
-        if (index < 0 || index >= this.m) {
-            throw new Error("Index out of bounds.");
-        }
-        const ref =  this.referenceData.at(0);
-        return ref instanceof Array ? ref[index] : ref.at(index);
-    }
+  withAdded(other: Row<M, T>): MutableRow<M, T> {
+      return super.withAdded(other) as MutableRow<M, T>;
+  }
 
-    public [Symbol.iterator](): Iterator<T> {
-        return new class implements Iterator<T> {
-            protected index: number = 0;
-            constructor(protected row: Row<M, T>) {}
-            public next(): IteratorResult<T> {
-                if (this.index < this.row.m) {
-                    return {value: this.row.at(this.index++), done: false};
-                }
-                return {value: null, done: true};
-            }
-        }(this)
-    }
+  withAddedScalar(other: T): MutableRow<M, T> {
+      return super.withAddedScalar(other) as MutableRow<M, T>;
+  }
 
-    withAddedRow<O extends Dimension = 2>(row: Row<M, T>, atIdx: number): MutableMatrix<O, M, T> {
-      return super.withAddedRow(row, atIdx) as MutableMatrix<O, M, T>;
-    }
+  withSubtracted(other: Row<M, T>): MutableRow<M, T> {
+      return super.withSubtracted(other) as MutableRow<M, T>;
+  }
 
-    withAddedColumn<O extends Dimension>(column: Column<1, T>, atIdx: number): MutableMatrix<1, O, T> {
-      return super.withAddedColumn(column, atIdx) as MutableMatrix<1, O, T>;
-    }
+  withSubtractedScalar(other: T): MutableRow<M, T> {
+      return super.withSubtractedScalar(other) as MutableRow<M, T>;
+  }
 
-    withoutRow<O extends Dimension = 0>(atIdx: number): MutableMatrix<O, M, T> {
-      return super.withoutRow(atIdx) as MutableMatrix<O, M, T>;
-    }
+  getScaled(other: T): MutableRow<M, T> {
+      return super.getScaled(other) as MutableRow<M, T>;
+  }
 
-    withoutColumn<O extends Dimension>(atIdx: number): MutableMatrix<1, O, T> {
-      return super.withoutColumn(atIdx) as MutableMatrix<1, O, T>;
+  mapped<F extends MatrixContent>(f: (value: T) => F): MutableRow<M, F> {
+      return super.mapped(f) as MutableRow<M, F>;
+  }
+
+  public getTranspose(): MutableColumn<M, T> {
+    const newData: T[] = [];
+    for (let i = 0; i < this.m; i++) {
+      newData.push(this.referenceData.getValue(0, i));
     }
+    return new GenericMutableColumn(newData, this.m);
+  }
+
+  public foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G {
+    let acc = init;
+    for (let i = 0; i < this.m; i++) {
+      acc = f(acc, this.referenceData.getValue(0, i));
+    }
+    return acc;
+  }
+
+  public foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G {
+    let acc = init;
+    for (let i = this.m - 1; i >= 0; i--) {
+      acc = f(acc, this.referenceData.getValue(0, i));
+    }
+    return acc;
+  }
+
+  public at(index: number): T {
+      if (index < 0 || index >= this.m) {
+          throw new Error("Index out of bounds.");
+      }
+      const ref =  this.referenceData.at(0);
+      return ref instanceof Array ? ref[index] : ref.at(index);
+  }
+
+  public [Symbol.iterator](): Iterator<T> {
+      return new class implements Iterator<T> {
+          protected index: number = 0;
+          constructor(protected row: Row<M, T>) {}
+          public next(): IteratorResult<T> {
+              if (this.index < this.row.m) {
+                  return {value: this.row.at(this.index++), done: false};
+              }
+              return {value: null, done: true};
+          }
+      }(this)
+  }
+
+  withAddedRow<O extends Dimension = 2>(row: Row<M, T>, atIdx: number): MutableMatrix<O, M, T> {
+    return super.withAddedRow(row, atIdx) as MutableMatrix<O, M, T>;
+  }
+
+  withAddedColumn<O extends Dimension>(column: Column<1, T>, atIdx: number): MutableRow<O, T> {
+    return super.withAddedColumn(column, atIdx) as MutableRow<O, T>;
+  }
+
+  withoutRow<O extends Dimension = 0>(atIdx: number): MutableMatrix<O, M, T> {
+    return super.withoutRow(atIdx) as MutableMatrix<O, M, T>;
+  }
+
+  withoutColumn<O extends Dimension>(atIdx: number): MutableRow<O, T> {
+    return super.withoutColumn(atIdx) as MutableRow<O, T>;
+  }
 }
 
 interface MutableColumn<N extends Dimension, T extends MatrixContent> extends MutableMatrix<N, 1, T> {
@@ -265,10 +314,12 @@ interface MutableColumn<N extends Dimension, T extends MatrixContent> extends Mu
     withSubtractedScalar(other: T): MutableColumn<N, T>;
     getScaled(other: T): MutableColumn<N, T>;
     mapped<G extends MatrixContent>(mapper: (f: T) => G): MutableColumn<N, G>;
-    withAddedRow<O extends Dimension>(row: Row<1, T>, atIdx: number): MutableMatrix<O, 1, T>;
+    withAddedRow<O extends Dimension>(row: Row<1, T>, atIdx: number): MutableColumn<O, T>;
     withAddedColumn<O extends Dimension = 2>(column: Column<N, T>, atIdx: number): MutableMatrix<N, O, T>;
-    withoutRow<O extends Dimension>(atIdx: number): MutableMatrix<O, 1, T>;
+    withoutRow<O extends Dimension>(atIdx: number): MutableColumn<O, T>;
     withoutColumn<O extends Dimension = 0>(atIdx: number): MutableMatrix<N, O, T>;
+    foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G;
+    foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G;
 }
 
 class GenericMutableColumn<N extends Dimension, T extends MatrixContent> extends GenericMutableMatrix<N, 1, T> implements MutableColumn<N, T> {
@@ -279,56 +330,104 @@ class GenericMutableColumn<N extends Dimension, T extends MatrixContent> extends
       super(arrData.map((v: T) => [v]), null, null, n, 1);
     }
 
-    public getRow(i: number): MutableRow<1, T> {
-        if (i < 0 || i >= this.n) {
-            throw new Error("Index out of bounds.");
-        }
-        return new GenericMutableRow([this.referenceData.getValue(i, 0)], 1);
-    }
+  withAdded(other: Column<N, T>): MutableColumn<N, T> {
+      return super.withAdded(other) as MutableColumn<N, T>;
+  }
 
-    public getColumn(j: number): MutableColumn<N, T> {
-        if (j !== 0) {
-            throw new Error(`Column index out of bounds: ${j}`);
-        }
-        return this;
-    }
+  withAddedScalar(other: T): MutableColumn<N, T> {
+      return super.withAddedScalar(other) as MutableColumn<N, T>;
+  }
 
-    public at(index: number): T {
-        if (index < 0 || index >= this.n) {
-            throw new Error("Index out of bounds.");
-        }
-        const ref = this.referenceData.at(index)
-        return ref instanceof Array ? ref[0] : ref.at(0);
-    }
+  withSubtracted(other: Column<N, T>): MutableColumn<N, T> {
+      return super.withSubtracted(other) as MutableColumn<N, T>;
+  }
 
-    public [Symbol.iterator](): Iterator<T> {
-        return new class implements Iterator<T> {
-            protected index: number = 0;
-            constructor(protected column: Column<N, T>) {}
-            public next(): IteratorResult<T> {
-                if (this.index < this.column.n) {
-                    return {value: this.column.at(this.index++), done: false};
-                }
-                return {value: null, done: true};
-            }
-        }(this)
-    }
+  withSubtractedScalar(other: T): MutableColumn<N, T> {
+      return super.withSubtractedScalar(other) as MutableColumn<N, T>;
+  }
 
-    withAddedRow<O extends Dimension>(row: Row<1, T>, atIdx: number): MutableMatrix<O, 1, T> {
-      return super.withAddedRow(row, atIdx) as MutableMatrix<O, 1, T>;
-    }
+  getScaled(other: T): MutableColumn<N, T> {
+      return super.getScaled(other) as MutableColumn<N, T>;
+  }
 
-    withAddedColumn<O extends Dimension = 2>(column: Column<N, T>, atIdx: number): MutableMatrix<N, O, T> {
-      return super.withAddedColumn(column, atIdx) as MutableMatrix<N, O, T>;
-    }
+  mapped<G extends MatrixContent>(f: (value: T) => G): MutableColumn<N, G> {
+      return super.mapped(f) as MutableColumn<N, G>;
+  }
 
-    withoutRow<O extends Dimension>(atIdx: number): MutableMatrix<O, 1, T> {
-      return super.withoutRow(atIdx) as MutableMatrix<O, 1, T>;
+  public getTranspose(): MutableRow<N, T> {
+    const newData: T[] = [];
+    for (let i = 0; i < this.n; i++) {
+      newData.push(this.referenceData.getValue(i, 0));
     }
+    return new GenericMutableRow<N, T>(newData, this.n);
+  }
 
-    withoutColumn<O extends Dimension = 0>(atIdx: number): MutableMatrix<N, O, T> {
-      return super.withoutColumn(atIdx) as MutableMatrix<N, O, T>;
+  public foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G {
+    let acc = init;
+    for (let i = 0; i < this.n; i++) {
+      acc = f(acc, this.referenceData.getValue(i, 0));
     }
+    return acc;
+  }
+
+  public foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G {
+    let acc = init;
+    for (let i = this.n - 1; i >= 0; i--) {
+      acc = f(acc, this.referenceData.getValue(i, 0));
+    }
+    return acc;
+  }
+
+  public getRow(i: number): MutableRow<1, T> {
+      if (i < 0 || i >= this.n) {
+          throw new Error("Index out of bounds.");
+      }
+      return new GenericMutableRow([this.referenceData.getValue(i, 0)], 1);
+  }
+
+  public getColumn(j: number): MutableColumn<N, T> {
+      if (j !== 0) {
+          throw new Error(`Column index out of bounds: ${j}`);
+      }
+      return this;
+  }
+
+  public at(index: number): T {
+      if (index < 0 || index >= this.n) {
+          throw new Error("Index out of bounds.");
+      }
+      const ref = this.referenceData.at(index)
+      return ref instanceof Array ? ref[0] : ref.at(0);
+  }
+
+  public [Symbol.iterator](): Iterator<T> {
+      return new class implements Iterator<T> {
+          protected index: number = 0;
+          constructor(protected column: Column<N, T>) {}
+          public next(): IteratorResult<T> {
+              if (this.index < this.column.n) {
+                  return {value: this.column.at(this.index++), done: false};
+              }
+              return {value: null, done: true};
+          }
+      }(this)
+  }
+
+  withAddedRow<O extends Dimension>(row: Row<1, T>, atIdx: number): MutableColumn<O, T> {
+    return super.withAddedRow(row, atIdx) as MutableColumn<O, T>;
+  }
+
+  withAddedColumn<O extends Dimension = 2>(column: Column<N, T>, atIdx: number): MutableMatrix<N, O, T> {
+    return super.withAddedColumn(column, atIdx) as MutableMatrix<N, O, T>;
+  }
+
+  withoutRow<O extends Dimension>(atIdx: number): MutableColumn<O, T> {
+    return super.withoutRow(atIdx) as MutableColumn<O, T>;
+  }
+
+  withoutColumn<O extends Dimension = 0>(atIdx: number): MutableMatrix<N, O, T> {
+    return super.withoutColumn(atIdx) as MutableMatrix<N, O, T>;
+  }
 
 }
 

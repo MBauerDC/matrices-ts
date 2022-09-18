@@ -1,17 +1,20 @@
 import { Column, Dimension, GenericColumn, GenericMatrix, GenericRow, Matrix, MatrixContent, Row, matrixContentAdder, matrixContentSubtractor, matrixContentMultiplier, matrixContentScaler} from "./matrix";
-import { SparseMutableRow, SparseMutableColumn, SparseMutableRowMatrix, SparseMutableColumnMatrix, GenericSparseMutableColumn, GenericSparseMutableRow, SparseRowMatrix } from "./sparseMutable";
+import { SparseMutableRow, SparseMutableColumn, SparseRowMatrix, SparseColumnMatrix, GenericSparseMutableColumn, GenericSparseMutableRow, toMutable } from "./sparseMutable";
 
 type SparseData<T extends MatrixContent> = Record<number, T>;
 interface SparseRow<M extends Dimension, T extends MatrixContent> extends Row<M, T> {
+    isSparse: true;
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseRow<M, T>;
 };
 interface SparseColumn<N extends Dimension, T extends MatrixContent> extends Column<N, T> {
+    isSparse: true;
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseColumn<N, T>;
 };
 
 class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements SparseRow<M, T> {
+    isSparse: true = true;
     public readonly n: 1 = 1;
     public constructor(protected sparseData: SparseData<T>, public readonly m: M) {}
     
@@ -169,8 +172,8 @@ class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements 
         }
         const newSparseRow = rowToSparseRow(newRow);
         return atIdx == 0 ? 
-          new SparseRowMatrix<O, M, T>([newSparseRow.toMutable() as SparseMutableRow<M, T>, this.toMutable()], 2 as O, this.m) :
-          new SparseRowMatrix<O, M, T>([this.toMutable(), newSparseRow.toMutable() as SparseMutableRow<M, T>], 2 as O, this.m);
+          new SparseRowMatrix<O, M, T>([toMutable(newSparseRow)  as SparseMutableRow<M, T>, toMutable(this) as SparseMutableRow<M, T>], 2 as O, this.m) :
+          new SparseRowMatrix<O, M, T>([toMutable(this) as SparseMutableRow<M, T>, toMutable(newSparseRow) as SparseMutableRow<M, T>], 2 as O, this.m);
     }
 
     withAddedColumn<O extends Dimension>(newColumn: Column<1, T>, atIdx: number): Matrix<1, O, T> {
@@ -235,6 +238,7 @@ class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements 
 }
 
 class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implements SparseColumn<N, T> {
+    isSparse: true = true;
     public readonly m: 1 = 1;
     public constructor(protected sparseData: SparseData<T>, public readonly n: N) {}
     
@@ -406,8 +410,8 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
             throw new Error('Invalid column.');
         }
         return atIdx === 0 ?
-          new SparseColumnMatrix<N, O, T>([columnToSparseColumn(newColumn).toMutable() as SparseMutableColumn<N, T>, this.toMutable()], this.n, 2 as O) :
-          new SparseColumnMatrix<N, O, T>([this.toMutable(), columnToSparseColumn(newColumn).toMutable() as SparseMutableColumn<N, T>], this.n, 2 as O);
+          new SparseColumnMatrix<N, O, T>([toMutable(columnToSparseColumn(newColumn)) as SparseMutableColumn<N, T>, toMutable(this) as SparseMutableColumn<N, T>], this.n, 2 as O) :
+          new SparseColumnMatrix<N, O, T>([toMutable(this) as SparseMutableColumn<N, T>, toMutable(columnToSparseColumn(newColumn)) as SparseMutableColumn<N, T>], this.n, 2 as O);
     }
 
     withoutRow<O extends number>(atIdx: number): Matrix<O, 1, T> {

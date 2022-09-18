@@ -1,6 +1,6 @@
 import { Column, Dimension, GenericColumn, GenericRow, Matrix, MatrixContent, matrixContentAdder, matrixContentMultiplier, matrixContentSubtractor, Row} from "./matrix";
 import { GenericMutableColumn, GenericMutableMatrix, GenericMutableRow, MutableColumn, MutableMatrix, MutableRow } from "./mutable";
-import { columnToSparseColumn, GenericSparseColumn, GenericSparseRow, rowToSparseRow, SparseData } from "./sparse";
+import { columnToSparseColumn, GenericSparseColumn, GenericSparseRow, rowToSparseRow, SparseColumn, SparseData, SparseRow } from "./sparse";
 
 function createSparseMutableRow<M extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, m: M): SparseMutableRow<M, T> {
     return new GenericSparseMutableRow<M, T>(sparseData, m);
@@ -11,11 +11,13 @@ function createSparseMutableColumn<N extends Dimension, T extends MatrixContent>
  }
 
 interface SparseMutableRow<M extends Dimension, T extends MatrixContent> extends MutableRow<M, T> {
+    isSparse: true;
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseMutableRow<M, T>;
 };
 
 interface SparseMutableColumn<N extends Dimension, T extends MatrixContent> extends MutableColumn<N, T> {
+    isSparse: true;
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseMutableColumn<N, T>;
 };
@@ -301,11 +303,9 @@ class GenericSparseMutableColumn<N extends Dimension, T extends MatrixContent> e
         if (atIdx < 0 || atIdx > 1) {
             throw new Error('Invalid index.');
         }
-        if (atIdx === 0) {
-            return new SparseColumnMatrix<N, O, T>([columnToSparseColumn(newColumn).toMutable() as SparseMutableColumn<N, T>, this], this.n, 2 as O);
-        } else {
-            return new SparseColumnMatrix<N, O, T>([this, columnToSparseColumn(newColumn).toMutable() as SparseMutableColumn<N, T>], this.n, 2 as O);
-        }
+        return atIdx === 0 ?
+          new SparseColumnMatrix<N, O, T>([toMutable(columnToSparseColumn(newColumn)) as SparseMutableColumn<N, T>, this], this.n, 2 as O) :
+          new SparseColumnMatrix<N, O, T>([this, toMutable(columnToSparseColumn(newColumn))as SparseMutableColumn<N, T>], this.n, 2 as O);        
     }
 
     withoutRow<O extends number>(atIdx: number): SparseMutableColumn<O, T> {
@@ -319,6 +319,7 @@ class GenericSparseMutableColumn<N extends Dimension, T extends MatrixContent> e
 }
 
 class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements MutableMatrix<N, M, T> {
+    isSparse: true;
     constructor(protected rows: SparseMutableRow<M, T>[], public readonly n: N, public readonly m: M) {
         if (rows.length !== n) {
             throw new Error('Invalid number of rows');
@@ -356,11 +357,11 @@ class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends Matrix
     }
 
     getTranspose(): SparseColumnMatrix<M, N, T> {
-        const columns = [];
+        const sparseColumns: SparseMutableColumn<M, T>[] = [];
         for (let i = 0; i < this.n; i++) {
-            columns.push(new GenericSparseMutableColumn(this.rows[i].getSparseData(), this.m));
+            sparseColumns.push(new GenericSparseMutableColumn<M, T>(this.rows[i].getSparseData(), this.m));
         }
-        return new SparseColumnMatrix(columns, this.m, this.n);
+        return new SparseColumnMatrix<M, N, T>(sparseColumns, this.m, this.n);
     }
 
     *generateRow(i: number): Generator<T> {
@@ -398,17 +399,17 @@ class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends Matrix
     }
 
     getMultiplication<O extends Dimension>(right: Matrix<M, O, T>): MutableMatrix<N, O, T> {
-        const rows: Row<O, T>[] = [];
+        const rows: MutableRow<O, T>[] = [];
         for (let i = 0; i < this.n; i++) {
-            const newRowData = [];
+            const newRowData: T[] = [];
             for (let j = 0; j < right.m; j++) {
                 let sum: T = 0 as T;
                 for (let k = 0; k < right.n; k++) {
-                    sum = matrixContentAdder(sum, this.rows[i].getValue(0, k) * right.getValue(k, j));
+                    sum = matrixContentAdder(sum, matrixContentMultiplier(this.rows[i].getValue(0, k), right.getValue(k, j))) as T;
                 }
                 newRowData.push(sum as T);
             }
-            rows.push(new GenericRow(newRowData, right.m));
+            rows.push(new GenericMutableRow(newRowData, right.m));
         }
         return new GenericMutableMatrix(null, rows, null, this.n, right.m);
     }
@@ -555,6 +556,7 @@ class SparseRowMatrix<N extends Dimension, M extends Dimension, T extends Matrix
 
 
 class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements MutableMatrix<N, M, T> {
+    isSparse: true;
     constructor(protected columns: SparseMutableColumn<N, T>[], public readonly n: N, public readonly m: M) {
         if (columns.length !== m) {
             throw new Error('Invalid number of columns.');
@@ -592,11 +594,11 @@ class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends Mat
     }
 
     getTranspose(): SparseRowMatrix<M, N, T> {
-        const rows: SparseMutableRow<M, T>[] = [];
+        const rows: SparseMutableRow<N, T>[] = [];
         for (let j = 0; j < this.m; j++) {
-            rows.push(new GenericSparseMutableRow(this.columns[j].getSparseData(), this.n));
+            rows.push(new GenericSparseMutableRow<N, T>(this.columns[j].getSparseData(), this.n));
         }
-        return new SparseRowMatrix(rows, this.m, this.n);
+        return new SparseRowMatrix<M, N, T>(rows, this.m, this.n);
     }
 
     *generateRow(i: number): Generator<T> {
@@ -634,7 +636,7 @@ class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends Mat
     }
 
     getMultiplication<O extends Dimension>(right: Matrix<M, O, T>): MutableMatrix<N, O, T> {
-        const rows = [];
+        const rows: T[][] = [];
         for (let i = 0; i < this.n; i++) {
             const row: T[] = [];
             for (let j = 0; j < right.m; j++) {
@@ -778,7 +780,7 @@ class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends Mat
         if (atIdx < 0 || atIdx > this.m) {
             throw new Error('Invalid column index');
         }
-        const newSparseColumn = columnToSparseColumn(newColumn).toMutable() as SparseMutableColumn<N, T>;
+        const newSparseColumn = toMutable(columnToSparseColumn(newColumn)) as SparseMutableColumn<N, T>;
         const columns: SparseMutableColumn<N, T>[] = [];
         for (let j = (this.m - 1); j >= 0; j--) {
             if (j >= atIdx) {
@@ -820,4 +822,64 @@ class SparseColumnMatrix<N extends Dimension, M extends Dimension, T extends Mat
     }
 }
 
-export { SparseMutableColumn, SparseMutableRow, SparseColumnMatrix, SparseRowMatrix, GenericSparseMutableRow, GenericSparseMutableColumn,  createSparseMutableColumn, createSparseMutableRow };
+type SparseMatrixType = 
+  | SparseRow<Dimension, MatrixContent> 
+  | SparseColumn<Dimension, MatrixContent> 
+  | SparseRowMatrix<Dimension, Dimension, MatrixContent> 
+  | SparseColumnMatrix<Dimension, Dimension, MatrixContent>;
+
+function isSparse(m: Matrix<Dimension, Dimension, MatrixContent>): m is SparseMatrixType {
+  return m.hasOwnProperty("isSparse");
+}
+
+function isSparseRow(m: Matrix<Dimension, Dimension, MatrixContent>): m is SparseRow<Dimension, MatrixContent> {
+  return isSparse(m) && m.n === 1;
+}
+
+function isSparseColumn(m: Matrix<Dimension, Dimension, MatrixContent>): m is SparseColumn<Dimension, MatrixContent> {
+  return isSparse(m) && m.m === 1;
+}
+
+function toMutable<N extends Dimension, M extends Dimension, T extends MatrixContent>(matrix: Matrix<N, M, T>): MutableMatrix<N, M, T> | SparseMutableRow<M, T> | SparseMutableColumn<N, T> | SparseRowMatrix<N, M, T> | SparseColumnMatrix<N, M, T> {
+  const [isRow, isColumn, mIsSparse] = [matrix.n === 1, matrix.m === 1, isSparse(matrix)];
+  
+  const builder = 
+    mIsSparse ? 
+      (isRow || isColumn) ?
+        (data: Record<number, T>) => isRow ? createSparseMutableRow(data, matrix.m) : createSparseMutableColumn(data, matrix.n)  :
+        (data: any) => matrix as (SparseRowMatrix<N, M, T> | SparseColumnMatrix<N, M, T>) :
+      (data: T[][]) => new GenericMutableMatrix<N, M, T>(data, null, null, matrix.n, matrix.m);
+  let data: any = null;
+  if (isRow || isColumn) {
+    const recordOrArray: Record<number, T>|Array<T> = mIsSparse ? {} : [];
+    const it = isRow ? matrix.generateRow(0) : matrix.generateColumn(0);
+    let itResult = it.next();
+    let i = 0;
+    while (!itResult.done) {
+      const value  = itResult.value;
+      if (!mIsSparse || value !== 0) {
+        recordOrArray[i] = value;
+      }
+      itResult = it.next();
+      i++;
+    }
+    data = recordOrArray as Record<number, T>|Array<T>;
+    return builder(data as Record<number, T>|Array<T>) as MutableMatrix<N, M, T>;
+  }
+  const iterativeSetter = (matrix: Matrix<N, M, T>, data: T[][]) => {
+    for (let i = 0; i < matrix.n; i++) {
+      for (let j = 0; j < matrix.m; j++) {
+        data[i][j] = matrix.getValue(i, j);
+      }
+    }
+    return data;
+  };
+  if (mIsSparse) {
+    return builder(null) as (SparseRowMatrix<N, M, T> | SparseColumnMatrix<N, M, T>);
+  }
+  data = [] as T[][];
+  iterativeSetter(matrix, data);
+  return builder(data as T[][]) as MutableMatrix<N, M, T>;
+}
+
+export { SparseMutableColumn, SparseMutableRow, SparseColumnMatrix, SparseRowMatrix, GenericSparseMutableRow, GenericSparseMutableColumn,  createSparseMutableColumn, createSparseMutableRow, toMutable };

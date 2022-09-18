@@ -105,7 +105,6 @@ class GenericMutableMatrix<N extends Dimension, M extends Dimension, T extends M
   
     public add(other: Matrix<N, M, T>): void {
       for (let i = 0; i < this.n; i++) {
-        const row = [];
         for (let j = 0; j < this.m; j++) {
           const otherVal = other.getValue(i, j);
           if (0 !== otherVal) {

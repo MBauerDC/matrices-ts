@@ -1,7 +1,7 @@
 import { GenericMutableMatrix, MutableColumn, MutableMatrix, MutableRow } from "./mutable";
 
 type Dimension = number;
-type MatrixContent = number|Array<any>|Matrix<Dimension, Dimension, MatrixContent>;
+type MatrixContent = number|Array<MatrixContent>|Matrix<Dimension, Dimension, MatrixContent>;
 
 type Adder<T extends MatrixContent> = (a: T, b: T) => T;
 type Subtractor<T extends MatrixContent> = (a: T, b: T) => T;
@@ -9,19 +9,19 @@ type Multiplier<T extends MatrixContent> = (a: T, b: T) => T;
 type Scaler<T extends MatrixContent> = (a: T, s: number) => T;
 
 const numberAdder: Adder<number> = (a: number, b: number) => a + b;
-const arrayAdder: Adder<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { a.push(...b); return a};
-const matrixAdder: Adder<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withAdded(b);
+const arrayAdder: Adder<Array<MatrixContent>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { a.push(...b); return a};
+const matrixAdder: Adder<Matrix<Dimension, Dimension, MatrixContent>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withAdded(b);
 
 const numberSubtractor: Subtractor<number> = (a: number, b: number) => a - b;
-const arraySubtractor: Subtractor<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result = a.filter(x => !b.includes(x)); return result; };
-const matrixSubtractor: Adder<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withSubtracted(b);
+const arraySubtractor: Subtractor<Array<MatrixContent>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result = a.filter(x => !b.includes(x)); return result; };
+const matrixSubtractor: Adder<Matrix<Dimension, Dimension, MatrixContent>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withSubtracted(b);
 
 const numberMultiplier: Multiplier<number> = (a: number, b: number) => a * b;
-const arrayMultiplier: Multiplier<Array<any>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result: any[] = []; for (let i = 0; i < a.length; i++) { result.push([a[i], (b[i] ?? null)]); } return result; };
-const matrixMultiplier: Multiplier<Matrix<Dimension, Dimension, any>> = <N extends Dimension, M extends Dimension, O extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<M, O, T>) => a.getMultiplication(b);
+const arrayMultiplier: Multiplier<Array<MatrixContent>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result: T[][] = []; for (let i = 0; i < a.length; i++) { result.push([a[i] as T, (b[i] ?? null) as T]); } return result; };
+const matrixMultiplier: Multiplier<Matrix<Dimension, Dimension, MatrixContent>> = <N extends Dimension, M extends Dimension, O extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<M, O, T>) => a.getMultiplication(b);
 
 const numberScaler: Scaler<number> = (a: number, s: number) => s * a;
-const arrayScaler: Scaler<Array<any>> = (a: Array<any>, s: number) => { const max = Math.max(0,s); const result: any[] = []; let i = 0; while (i < max) { result[i] = a; i++ } return result; };
+const arrayScaler: Scaler<Array<MatrixContent>> = (a: Array<any>, s: number) => { const max = Math.max(0,s); const result: any[] = []; let i = 0; while (i < max) { result[i] = a; i++ } return result; };
 const matrixScaler: Scaler<Matrix<Dimension, Dimension, MatrixContent>> = (a: Matrix<Dimension, Dimension, MatrixContent>, s: number) => a.getScaled(s);
 
 const matrixContentAdder = <T extends MatrixContent>(a: T, b: T) => {
@@ -603,6 +603,5 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
         }(this)
     }
 }
-
 
 export { Dimension, MatrixContent, Matrix, Row, Column, GenericMatrix, GenericRow, GenericColumn, matrixContentAdder, matrixContentSubtractor, matrixContentScaler, matrixContentMultiplier };

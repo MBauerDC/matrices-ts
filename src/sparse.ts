@@ -1,5 +1,4 @@
 import { Column, Dimension, GenericColumn, GenericMatrix, GenericRow, Matrix, MatrixContent, Row, matrixContentAdder, matrixContentSubtractor, matrixContentMultiplier, matrixContentScaler} from "./matrix";
-import { SparseMutableRow, SparseMutableColumn, SparseRowMatrix, SparseColumnMatrix, GenericSparseMutableColumn, GenericSparseMutableRow, toMutable } from "./sparseMutable";
 
 type SparseData<T extends MatrixContent> = Record<number, T>;
 interface SparseRow<M extends Dimension, T extends MatrixContent> extends Row<M, T> {
@@ -160,20 +159,14 @@ class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements 
         return createSparseRow(data, this.m);
     }
 
-    
-    toMutable(): SparseMutableRow<M, T> {
-        return new GenericSparseMutableRow(this.sparseData, this.m);
-    }
-    
-
     withAddedRow<O extends Dimension>(newRow: Row<M, T>, atIdx: number): Matrix<O, M, T> {
         if (atIdx < 0 || atIdx > 1) {
             throw new Error('Invalid row.');
         }
         const newSparseRow = rowToSparseRow(newRow);
         return atIdx == 0 ? 
-          new SparseRowMatrix<O, M, T>([toMutable(newSparseRow)  as SparseMutableRow<M, T>, toMutable(this) as SparseMutableRow<M, T>], 2 as O, this.m) :
-          new SparseRowMatrix<O, M, T>([toMutable(this) as SparseMutableRow<M, T>, toMutable(newSparseRow) as SparseMutableRow<M, T>], 2 as O, this.m);
+          new SparseRowImmutableMatrix<O, M, T>([newSparseRow, this], 2 as O, this.m) :
+          new SparseRowImmutableMatrix<O, M, T>([this, newSparseRow], 2 as O, this.m);
     }
 
     withAddedColumn<O extends Dimension>(newColumn: Column<1, T>, atIdx: number): Matrix<1, O, T> {
@@ -380,13 +373,7 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
             data[parseInt(col)] = f(value as T) as G;
         }
         return createSparseColumn(data, this.n);
-    }
-
-    
-    toMutable(): SparseMutableColumn<N, T> {
-        return new GenericSparseMutableColumn(this.sparseData, this.n);
-    }
-    
+    }    
 
     withAddedRow<O extends number>(newRow: Row<1, T>, atIdx: number): SparseColumn<O, T> {
         if (atIdx < 0 || atIdx > this.n) {
@@ -410,8 +397,8 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
             throw new Error('Invalid column.');
         }
         return atIdx === 0 ?
-          new SparseColumnMatrix<N, O, T>([toMutable(columnToSparseColumn(newColumn)) as SparseMutableColumn<N, T>, toMutable(this) as SparseMutableColumn<N, T>], this.n, 2 as O) :
-          new SparseColumnMatrix<N, O, T>([toMutable(this) as SparseMutableColumn<N, T>, toMutable(columnToSparseColumn(newColumn)) as SparseMutableColumn<N, T>], this.n, 2 as O);
+          new SparseColumnImmutableMatrix<N, O, T>([columnToSparseColumn(newColumn), this], this.n, 2 as O) :
+          new SparseColumnImmutableMatrix<N, O, T>([this, columnToSparseColumn(newColumn)], this.n, 2 as O);
     }
 
     withoutRow<O extends number>(atIdx: number): Matrix<O, 1, T> {
@@ -434,7 +421,7 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
         if (atIdx !== 0) {
             throw new Error('Invalid column.');
         }
-        return new SparseRowMatrix<O, O, T>([], 0 as O, 0 as O);
+        return new SparseRowImmutableMatrix<O, O, T>([], 0 as O, 0 as O);
     }
 
     public [Symbol.iterator](): Iterator<T> {
@@ -452,7 +439,193 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
 
 }
 
+class SparseRowImmutableMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements Matrix<N, M, T> {
+    isSparse: true;
+    constructor(protected rows: SparseRow<M, T>[], public readonly n: N, public readonly m: M) {
+        if (rows.length !== n) {
+            throw new Error('Invalid number of rows');
+        }
+        this.n = n;
+        this.m = m;
+    }
 
+    at(idx: number): T {
+        if (this.n === 1) {
+            return this.getValue(0, idx);
+        }
+        if (this.m === 1) {
+            return this.getValue(idx, 0);
+        }
+        throw new Error("Matrix must be Nx1, 1xM or 1x1 in order to use the at method.");
+    }
+
+    [Symbol.iterator](): Iterator<T> {
+        if (this.n === 1) {
+            return this.getRow(0)[Symbol.iterator]();
+        }
+        if (this.m === 1) {
+            return this.getColumn(0)[Symbol.iterator]();
+        }
+        throw new Error("Matrix must be Nx1, 1xM or 1x1 in order to use the at method.");
+    }
+
+    getValue(i: number, j: number): T {
+        if (i < 0 || i >= this.n) {
+            throw new Error('Invalid row');
+        }
+        if (j < 0 || j >= this.m) {
+            throw new Error('Invalid column');
+        }
+        return this.rows[i].getValue(0, j) as T;
+    }
+
+    getTranspose(): SparseColumnImmutableMatrix<M, N, T> {
+        const sparseColumns: SparseColumn<M, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            sparseColumns.push(new GenericSparseColumn<M, T>(this.rows[i].getSparseData(), this.m));
+        }
+        return new SparseColumnImmutableMatrix<M, N, T>(sparseColumns, this.m, this.n);
+    }
+
+    *generateRow(i: number): Generator<T> {
+        if (i < 0 || i >= this.n) {
+            throw new Error('Invalid row');
+        }
+        yield* this.rows[i].generateRow(0);
+    }
+
+    *generateColumn(j: number): Generator<T> {
+        if (j < 0 || j >= this.m) {
+            throw new Error('Invalid column');
+        }
+        for (let i = 0; i < this.n; i++) {
+            yield this.rows[i].getValue(0, j);
+        }
+    }
+
+    getRow(i: number): SparseRow<M, T> {
+        if (i < 0 || i >= this.n) {
+            throw new Error('Invalid row');
+        }
+        return this.rows[i];
+    }
+
+    getColumn(j: number): Column<N, T> {
+        if (j < 0 || j >= this.m) {
+            throw new Error('Invalid column');
+        }
+        const data: T[] = [];
+        for (let i = 0; i < this.n; i++) {
+            data.push(this.rows[i].getValue(0, j) as T);
+        }
+        return new GenericColumn(data, this.n);
+    }
+
+    getMultiplication<O extends Dimension>(right: Matrix<M, O, T>): Matrix<N, O, T> {
+        const rows: Row<O, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            const newRowData: T[] = [];
+            for (let j = 0; j < right.m; j++) {
+                let sum: T = 0 as T;
+                for (let k = 0; k < right.n; k++) {
+                    sum = matrixContentAdder(sum, matrixContentMultiplier(this.rows[i].getValue(0, k), right.getValue(k, j))) as T;
+                }
+                newRowData.push(sum as T);
+            }
+            rows.push(new GenericRow(newRowData, right.m));
+        }
+        return new GenericMatrix(null, rows, null, this.n, right.m);
+    }
+
+    getScaled(other: T): SparseRowImmutableMatrix<N, M, T> {
+        const rows: SparseRow<M, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            rows.push(this.rows[i].getScaled(other) as SparseRow<M, T>);
+        }
+        return new SparseRowImmutableMatrix(rows, this.n, this.m);
+    }
+
+    withValue(i: number, j: number, value: T): SparseRowImmutableMatrix<N, M, T> {
+        if (i < 0 || i >= this.n) {
+            throw new Error('Invalid row');
+        }
+        if (j < 0 || j >= this.m) {
+            throw new Error('Invalid column');
+        }
+        const rows = [...this.rows];
+        rows[i] = rows[i].withValue(0, j, value);
+        return new SparseRowImmutableMatrix(rows, this.n, this.m);
+    }
+
+    withAdded(other: Matrix<N, M, T>): SparseRowImmutableMatrix<N, M, T> {
+        const rows: SparseRow<M, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            rows.push(this.rows[i].withAdded(other.getRow(i)) as SparseRow<M, T>);
+        }
+        return new SparseRowImmutableMatrix(rows, this.n, this.m);
+    }
+
+    withAddedScalar(other: T): SparseRowImmutableMatrix<N, M, T> {
+        const rows: SparseRow<M, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            rows.push(this.rows[i].withAddedScalar(other) as SparseRow<M, T>);
+        }
+        return new SparseRowImmutableMatrix(rows, this.n, this.m);
+    }
+
+    withSubtracted(other: Matrix<N, M, T>): SparseRowImmutableMatrix<N, M, T> {
+        const rows: SparseRow<M, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            rows.push(this.rows[i].withSubtracted(other.getRow(i)) as SparseRow<M, T>);
+        }
+        return new SparseRowImmutableMatrix(rows, this.n, this.m);
+    }
+
+    withSubtractedScalar(other: T): SparseRowImmutableMatrix<N, M, T> {
+        const rows: SparseRow<M, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            rows.push(this.rows[i].withSubtractedScalar(other) as SparseRow<M, T>);
+        }
+        return new SparseRowImmutableMatrix(rows, this.n, this.m);
+    }
+
+    mapped<G extends MatrixContent>(mapper: (value: T) => G): SparseRowImmutableMatrix<N, M, G> {
+        const rows: SparseRow<M, G>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            rows.push(this.rows[i].mapped(mapper) as SparseRow<M, G>);
+        }
+        return new SparseRowImmutableMatrix<N, M, G>(rows, this.n, this.m);
+    }
+
+    withAddedRow<O extends number>(newRow: Row<M, T>, atIdx: number): SparseRowImmutableMatrix<O, M, T> {
+        const rows = [...this.rows];
+        rows.splice(atIdx, 0, newRow as SparseRow<M, T>);
+        return new SparseRowImmutableMatrix(rows, (this.n + 1) as O, this.m);
+    }
+
+    withAddedColumn<O extends number>(newColumn: Column<N, T>, atIdx: number): SparseRowImmutableMatrix<N, O, T> {
+        const rows: SparseRow<O, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            const valToAdd = newColumn.getValue(i, 0);
+            rows.push(this.rows[i].withAddedColumn(new GenericSparseColumn([valToAdd], 1), atIdx) as SparseRow<O, T>);
+        }
+        return new SparseRowImmutableMatrix<N, O, T>(rows, this.n, (this.m + 1) as O);
+    }
+
+    withoutRow<O extends number>(atIdx: number): SparseRowImmutableMatrix<O, M, T> {
+        const rows = [...this.rows];
+        rows.splice(atIdx, 1);
+        return new SparseRowImmutableMatrix(rows, (this.n - 1) as O, this.m);
+    }
+
+    withoutColumn<O extends number>(atIdx: number): SparseRowImmutableMatrix<N, O, T> {
+        const rows: SparseRow<O, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            rows.push(this.rows[i].withoutColumn(atIdx) as SparseRow<O, T>);
+        }
+        return new SparseRowImmutableMatrix(rows, this.n, (this.m - 1) as O);
+    }
+}
 
 function createSparseRow<M extends Dimension, T extends MatrixContent>(sparseData: SparseData<T>, m: M): SparseRow<M, T> {
     return new GenericSparseRow(sparseData, m);
@@ -463,8 +636,10 @@ function sparseRowToRow<M extends Dimension, T extends MatrixContent>(sparseRow:
     return new GenericRow(Array.from(sparseRow.generateRow(0)), sparseRow.m);
 }
 
-
 function rowToSparseRow<M extends Dimension, T extends MatrixContent>(row: Row<M, T>): SparseRow<M, T> {
+    if (row.hasOwnProperty("isSparse")) {
+        return row as SparseRow<M, T>;
+    }
     const data: Record<number, T> = {};
     for (let i = 0; i < row.m; i++) {
         const currVal = row.getValue(0, i);
@@ -480,6 +655,9 @@ function sparseColumnToColumn<N extends Dimension, T extends MatrixContent>(spar
 }
 
 function columnToSparseColumn<N extends Dimension, T extends MatrixContent>(column: Column<N, T>): SparseColumn<N, T> {
+    if (column.hasOwnProperty("isSparse")) {
+        return column as SparseColumn<N, T>;
+    }
     const data: Record<number, T> = {};
     for (let i = 0; i < column.n; i++) {
         const currVal = column.getValue(i, 0);
@@ -494,4 +672,218 @@ function createSparseColumn<N extends Dimension, T extends MatrixContent>(sparse
    return new GenericSparseColumn(sparseData, n);   
 }
 
-export { SparseRow, SparseColumn, SparseData, GenericSparseRow, GenericSparseColumn, createSparseRow, createSparseColumn, sparseRowToRow, rowToSparseRow, sparseColumnToColumn, columnToSparseColumn };
+class SparseColumnImmutableMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements Matrix<N, M, T> {
+    isSparse: true;
+    constructor(protected columns: SparseColumn<N, T>[], public readonly n: N, public readonly m: M) {
+        if (columns.length !== m) {
+            throw new Error('Invalid number of columns.');
+        }
+    }
+    
+    at(idx: number): T {
+        if (this.n === 1) {
+            return this.getValue(0, idx);
+        }
+        if (this.m === 1) {
+            return this.getValue(idx, 0);
+        }
+        throw new Error("Matrix must be Nx1, 1xM or 1x1 in order to use the at method.");
+    }
+    
+    [Symbol.iterator](): Iterator<T> {
+        if (this.n === 1) {
+            return this.getRow(0)[Symbol.iterator]();
+        }
+        if (this.m === 1) {
+            return this.getColumn(0)[Symbol.iterator]();
+        }
+        throw new Error("Matrix must be Nx1, 1xM or 1x1 in order to use the at method.");
+    }
+    
+    getValue(i: number, j: number): T {
+        if (i < 0 || i >= this.n) {
+            throw new Error('Invalid row');
+        }
+        if (j < 0 || j >= this.m) {
+            throw new Error('Invalid column');
+        }
+        return this.columns[j].getValue(i, 0) as T;
+    }
+    
+    getTranspose(): SparseRowImmutableMatrix<M, N, T> {
+        const rows: SparseRow<N, T>[] = [];
+        for (let j = 0; j < this.m; j++) {
+            rows.push(new GenericSparseRow<N, T>(this.columns[j].getSparseData(), this.n));
+        }
+        return new SparseRowImmutableMatrix<M, N, T>(rows, this.m, this.n);
+    }
+    
+    *generateRow(i: number): Generator<T> {
+        if (i < 0 || i >= this.n) {
+            throw new Error('Invalid row');
+        }
+        for (let j = 0; j < this.m; j++) {
+            yield this.columns[j].getValue(i, 0);
+        }
+    }
+
+    *generateColumn(j: number): Generator<T> {
+        if (j < 0 || j >= this.m) {
+            throw new Error('Invalid column');
+        }
+        yield* this.columns[j].generateColumn(0);
+    }
+    
+    getRow(i: number): Row<M, T> {
+        if (i < 0 || i >= this.n) {
+            throw new Error('Invalid row');
+        }
+        const data: T[] = [];
+        for (let j = 0; j < this.m; j++) {
+            data.push(this.columns[j].getValue(i, 0) as T);
+        }
+        return new GenericRow(data, this.m);
+    }
+    
+    getColumn(j: number): SparseColumn<N, T> {
+        if (j < 0 || j >= this.m) {
+            throw new Error('Invalid column');
+        }
+        return this.columns[j];
+    }
+    
+    getMultiplication<O extends Dimension>(right: Matrix<M, O, T>): Matrix<N, O, T> {
+        const rows: SparseRow<O, T>[] = [];
+        for (let i = 0; i < this.n; i++) {
+            const row: T[] = [];
+            for (let j = 0; j < right.m; j++) {
+                let sum: T = 0 as T;
+                for (let k = 0; k < this.m; k++) {
+                    sum = matrixContentAdder(sum, matrixContentMultiplier(this.columns[k].getValue(i, 0), right.getValue(k, j)) as T) as T;
+                }
+                row.push(sum);
+            }
+            rows.push(new GenericSparseRow(row, right.m));
+        }
+        return new SparseRowImmutableMatrix(rows, this.n, right.m);
+    }
+    
+    getScaled(other: T): SparseColumnImmutableMatrix<N, M, T> {
+        if (other !== 1) {
+            const columns: SparseColumn<N, T>[] = [];
+            for (let j = 0; j < this.m; j++) {
+                columns.push(this.columns[j].getScaled(other) as SparseColumn<N, T>);
+            }
+            return new SparseColumnImmutableMatrix(columns, this.n, this.m);
+        }
+        return this;
+    }
+    
+    withValue(i: number, j: number, value: T): SparseColumnImmutableMatrix<N, M, T> {
+        if (i < 0 || i >= this.n) {
+            throw new Error('Invalid row');
+        }
+        if (j < 0 || j >= this.m) {
+            throw new Error('Invalid column');
+        }
+        const columns: SparseColumn<N, T>[] = [];
+        for (let k = 0; k < this.m; k++) {
+            const newColumn = k !== j ? this.columns[k] : this.columns[k].withValue(i, 0, value);
+            columns.push(newColumn);
+        }
+        return new SparseColumnImmutableMatrix(columns, this.n, this.m);
+    }
+    
+    withAdded(other: Matrix<N, M, T>): SparseColumnImmutableMatrix<N, M, T> {
+        const columns: SparseColumn<N, T>[] = [];
+        for (let j = 0; j < this.m; j++) {
+            columns.push(this.columns[j].withAdded(other.getColumn(j)) as SparseColumn<N, T>);
+        }
+        return new SparseColumnImmutableMatrix(columns, this.n, this.m);
+    }
+    
+        withAddedScalar(other: T): SparseColumnImmutableMatrix<N, M, T> {
+            const columns: SparseColumn<N, T>[] = [];
+            for (let j = 0; j < this.m; j++) {
+                columns.push(this.columns[j].withAddedScalar(other) as SparseColumn<N, T>);
+            }
+            return new SparseColumnImmutableMatrix(columns, this.n, this.m);
+        }
+    
+        withSubtracted(other: Matrix<N, M, T>): SparseColumnImmutableMatrix<N, M, T> {
+            const columns: SparseColumn<N, T>[] = [];
+            for (let j = 0; j < this.m; j++) {
+                columns.push(this.columns[j].withSubtracted(other.getColumn(j)) as SparseColumn<N, T>);
+            }
+            return new SparseColumnImmutableMatrix(columns, this.n, this.m);
+        }
+    
+        withSubtractedScalar(other: T): SparseColumnImmutableMatrix<N, M, T> {
+            const columns: SparseColumn<N, T>[] = [];
+            for (let j = 0; j < this.m; j++) {
+                columns.push(this.columns[j].withSubtractedScalar(other) as SparseColumn<N, T>);
+            }
+            return new SparseColumnImmutableMatrix(columns, this.n, this.m);
+        }
+    
+        mapped<G extends MatrixContent>(f: (value: T) => G): SparseColumnImmutableMatrix<N, M, G> {
+            const columns: SparseColumn<N, G>[] = [];
+            for (const currColumn of this.columns) {
+                columns.push(currColumn.mapped(f) as SparseColumn<N, G>);
+            }
+            return new SparseColumnImmutableMatrix<N, M, G>(columns, this.n, this.m);
+        }
+        withAddedRow<O extends number>(newRow: Row<M, T>, atIdx: number): SparseColumnImmutableMatrix<O, M, T> {
+            if (atIdx < 0 || atIdx > this.n) {
+                throw new Error('Invalid row index');
+            }
+            const columns: SparseColumn<O, T>[] = [];
+            for (let j = 0; j < this.m; j++) {
+                const currColumn: SparseColumn<N, T> = this.columns[j];
+                const newColumn = currColumn.withAddedRow(new GenericRow<1, T>([newRow.getValue(0, j)], 1), atIdx) as SparseColumn<O, T>;
+                columns.push(newColumn);
+            }
+            return new SparseColumnImmutableMatrix(columns, (this.n + 1) as O, this.m);
+        }
+    
+        withAddedColumn<O extends number>(newColumn: Column<N, T>, atIdx: number): SparseColumnImmutableMatrix<N, O, T> {
+            if (atIdx < 0 || atIdx > this.m) {
+                throw new Error('Invalid column index');
+            }
+            const newSparseColumn = columnToSparseColumn(newColumn);
+            const columns: SparseColumn<N, T>[] = [];
+            for (let j = (this.m - 1); j >= 0; j--) {
+                if (j >= atIdx) {
+                    columns[j + 1] = this.columns[j];;
+                } else {
+                    columns[j] = this.columns[j];
+                }
+            }
+            columns[atIdx] = newSparseColumn;
+            return new SparseColumnImmutableMatrix(columns, this.n, (this.m + 1) as O);
+        }
+    
+        withoutRow<O extends number>(atIdx: number): SparseColumnImmutableMatrix<O, M, T> {
+            if (atIdx < 0 || atIdx >= this.n) {
+                throw new Error('Invalid row index');
+            }
+            const columns: SparseColumn<O, T>[] = [];
+            for (let j = 0; j < this.m; j++) {
+                const currColumn: SparseColumn<N, T> = this.columns[j];
+                const newColumn = currColumn.withoutRow(atIdx) as SparseColumn<O, T>;
+                columns.push(newColumn);
+            }
+            return new SparseColumnImmutableMatrix(columns, (this.n - 1) as O, this.m);
+        }
+    
+        withoutColumn<O extends number>(atIdx: number): SparseColumnImmutableMatrix<N, O, T> {
+            if (atIdx < 0 || atIdx >= this.m) {
+                throw new Error('Invalid column index');
+            }
+            const columns: SparseColumn<N, T>[] = [...this.columns];
+            return new SparseColumnImmutableMatrix(columns.splice(atIdx, 1), this.n, (this.m - 1) as O);
+        }
+    
+}
+
+export { SparseRow, SparseColumn, SparseData, GenericSparseRow, GenericSparseColumn, SparseRowImmutableMatrix, SparseColumnImmutableMatrix, createSparseRow, createSparseColumn, sparseRowToRow, rowToSparseRow, sparseColumnToColumn, columnToSparseColumn };

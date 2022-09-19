@@ -14,7 +14,7 @@ const matrixAdder: Adder<Matrix<Dimension, Dimension, MatrixContent>> = <N exten
 
 const numberSubtractor: Subtractor<number> = (a: number, b: number) => a - b;
 const arraySubtractor: Subtractor<Array<MatrixContent>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result = a.filter(x => !b.includes(x)); return result; };
-const matrixSubtractor: Adder<Matrix<Dimension, Dimension, MatrixContent>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withSubtracted(b);
+const matrixSubtractor: Subtractor<Matrix<Dimension, Dimension, MatrixContent>> = <N extends Dimension, M extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<N, M, T>) => a.withSubtracted(b);
 
 const numberMultiplier: Multiplier<number> = (a: number, b: number) => a * b;
 const arrayMultiplier: Multiplier<Array<MatrixContent>> = <T extends MatrixContent>(a: Array<T>, b: Array<T>) => { const result: T[][] = []; for (let i = 0; i < a.length; i++) { result.push([a[i] as T, (b[i] ?? null) as T]); } return result; };
@@ -24,44 +24,44 @@ const numberScaler: Scaler<number> = (a: number, s: number) => s * a;
 const arrayScaler: Scaler<Array<MatrixContent>> = (a: Array<any>, s: number) => { const max = Math.max(0,s); const result: any[] = []; let i = 0; while (i < max) { result[i] = a; i++ } return result; };
 const matrixScaler: Scaler<Matrix<Dimension, Dimension, MatrixContent>> = (a: Matrix<Dimension, Dimension, MatrixContent>, s: number) => a.getScaled(s);
 
-const matrixContentAdder = <T extends MatrixContent>(a: T, b: T) => {
+const matrixContentAdder: <T extends MatrixContent>(a: T, b: T) => T = <T extends MatrixContent>(a: T, b: T) => {
     const result: MatrixContent = 
       typeof a === "number" ? 
         numberAdder(a, b as number)  : 
         Array.isArray(a) ?
           arrayAdder(a, b as Array<any>) :
           matrixAdder(a, b as Matrix<Dimension, Dimension, MatrixContent>);
-    return result;
+    return result as T;
 };
 
-const matrixContentSubtractor = <T extends MatrixContent>(a: T, b: T) => {
+const matrixContentSubtractor: <T extends MatrixContent>(a: T, b: T) => T = <T extends MatrixContent>(a: T, b: T) => {
     const result = 
       typeof a === "number" ? 
         numberSubtractor(a, b as number) : 
         Array.isArray(a) ?
           arraySubtractor(a, b as Array<any>) :
           matrixSubtractor(a, b as Matrix<Dimension, Dimension, MatrixContent>);
-    return result;
+    return result as T;
 };
 
-const matrixContentMultiplier = <T extends MatrixContent>(a: T, b: T) => {
+const matrixContentMultiplier: <T extends MatrixContent>(a: T, b: T) => T = <T extends MatrixContent>(a: T, b: T) => {
     const result = 
       typeof a === "number" ? 
         numberMultiplier(a, b as number) : 
         Array.isArray(a) ?
           arrayMultiplier(a, b as Array<any>) :
           matrixMultiplier(a, b as Matrix<Dimension, Dimension, MatrixContent>);
-    return result;
+    return result as T;
 };
 
-const matrixContentScaler = <T extends MatrixContent>(a: T, s: number) => {
+const matrixContentScaler: <T extends MatrixContent>(a: T, s: number) => T = <T extends MatrixContent>(a: T, s: number) => {
     const result = 
       typeof a === "number" ? 
         numberScaler(a, s as number) : 
         Array.isArray(a) ?
           arrayScaler(a, s) :
           matrixScaler(a, s);
-    return result;
+    return result as T;
 };
 
 
@@ -443,6 +443,8 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
 
 
 interface Row<M extends Dimension, T extends MatrixContent> extends Matrix<1, M, T> {
+    readonly n: 1;
+    readonly m: M;
     getTranspose(): Column<M, T>;
     getRow(i: number): Row<M, T>;
     getColumn(j: number): Column<1, T>;
@@ -551,6 +553,8 @@ class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMa
 }
 
 interface Column<N extends Dimension, T extends MatrixContent> extends Matrix<N, 1, T> {
+    readonly n: N;
+    readonly m: 1;
     getTranspose(): Row<N, T>;
     getRow(i: number): Row<1, T>;
     getColumn(j: number): Column<N, T>;
@@ -605,7 +609,7 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
         return super.mapped(f) as Column<N, G>;
     }
 
-    public getRow(i: number): Row<1, T> {
+    getRow(i: number): Row<1, T> {
         if (i < 0 || i >= this.n) {
             throw new Error("Index out of bounds.");
         }

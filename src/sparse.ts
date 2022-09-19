@@ -2,11 +2,13 @@ import { Column, Dimension, GenericColumn, GenericMatrix, GenericRow, Matrix, Ma
 
 type SparseData<T extends MatrixContent> = Record<number, T>;
 interface SparseRow<M extends Dimension, T extends MatrixContent> extends Row<M, T> {
+    readonly n: 1;
     isSparse: true;
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseRow<M, T>;
 };
 interface SparseColumn<N extends Dimension, T extends MatrixContent> extends Column<N, T> {
+    readonly m: 1;
     isSparse: true;
     getSparseData(): SparseData<T>;
     withValue(row: number, column: number, value: T): SparseColumn<N, T>;
@@ -14,7 +16,7 @@ interface SparseColumn<N extends Dimension, T extends MatrixContent> extends Col
 
 class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements SparseRow<M, T> {
     isSparse: true = true;
-    public readonly n: 1 = 1;
+    readonly n: 1 = 1;
     public constructor(protected sparseData: SparseData<T>, public readonly m: M) {}
     
     getSparseData(): SparseData<T> {
@@ -249,7 +251,7 @@ class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements 
 
 class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implements SparseColumn<N, T> {
     isSparse: true = true;
-    public readonly m: 1 = 1;
+    readonly m: 1 = 1;
     public constructor(protected sparseData: SparseData<T>, public readonly n: N) {}
     
     getSparseData(): SparseData<T> {
@@ -555,20 +557,29 @@ class SparseRowImmutableMatrix<N extends Dimension, M extends Dimension, T exten
         return new GenericColumn(data, this.n);
     }
 
-    getMultiplication<O extends Dimension>(right: Matrix<M, O, T>): Matrix<N, O, T> {
-        const rows: Row<O, T>[] = [];
+    getMultiplication<O extends Dimension>(right: Matrix<M, O, T>): SparseRowImmutableMatrix<N, O, T> {
+        
+        const rows: GenericSparseRow<O, T>[] = [];        
         for (let i = 0; i < this.n; i++) {
-            const newRowData: T[] = [];
+            const newRow: Record<number, T> = {};
+            const currRow: SparseRow<M, T> = this.rows[i];
+            const currRowData: SparseData<T> = currRow.getSparseData();
             for (let j = 0; j < right.m; j++) {
                 let sum: T = 0 as T;
                 for (let k = 0; k < right.n; k++) {
-                    sum = matrixContentAdder(sum, matrixContentMultiplier(this.rows[i].getValue(0, k), right.getValue(k, j))) as T;
+                    const leftValue = currRowData[k];
+                    const rightValue = right.getValue(k, j);
+                    if (leftValue !== 0 && typeof leftValue !== "undefined" && rightValue !== 0 && typeof rightValue !== "undefined") {
+                        sum = matrixContentAdder<T>(sum, matrixContentMultiplier<T>(leftValue, rightValue));    
+                        if (sum !== 0) {
+                            newRow[j] = sum as T;
+                        }
+                    }
                 }
-                newRowData.push(sum as T);
             }
-            rows.push(new GenericRow(newRowData, right.m));
+            rows.push(new GenericSparseRow(newRow, right.m));
         }
-        return new GenericMatrix(null, rows, null, this.n, right.m);
+        return new SparseRowImmutableMatrix(rows, this.n, right.m);
     }
 
     getScaled(other: T): SparseRowImmutableMatrix<N, M, T> {

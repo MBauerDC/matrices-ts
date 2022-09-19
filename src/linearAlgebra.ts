@@ -1,8 +1,6 @@
 import { Dimension, GenericMatrix, Matrix, Row } from "./matrix";
 import { GenericSparseRow } from "./sparse";
 
-module LinearAlgebra {
-
     function dotProduct<N extends Dimension, M extends Matrix<1, N, number>|Matrix<N, 1, number>>(a: M, b: M): number {
         let result = 0;
         const areColumns = a.m === 1;
@@ -265,6 +263,4 @@ module LinearAlgebra {
         }
     }    
 
-}
-
-export { LinearAlgebra };
+export { dotProduct, trace, determinant, cofactor, power, reducedRowEchelonForm, ElementaryRowOperation, SwapRows, ScaleRow, AddScaledRow, ElementaryRowOperations, Id };

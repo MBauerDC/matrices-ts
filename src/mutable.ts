@@ -201,9 +201,9 @@ interface MutableRow<M extends Dimension, T extends MatrixContent> extends Mutab
     withSubtractedScalar(other: T): MutableRow<M, T>;
     getScaled(other: T): MutableRow<M, T>;
     mapped<G extends MatrixContent>(f: (value: T) => G): MutableRow<M, G>;
-    withAddedRow<O extends Dimension = 2>(row: Row<M, T>, atIdx: number): MutableMatrix<O, M, T>;
+    withAddedRow(row: Row<M, T>, atIdx: number): MutableMatrix<2, M, T>;
     withAddedColumn<O extends Dimension>(column: Column<1, T>, atIdx: number): MutableRow<O, T>;
-    withoutRow<O extends Dimension = 0>(atIdx: number): MutableMatrix<O, M, T>;
+    withoutRow(atIdx: number): MutableMatrix<0, M, T>;
     withoutColumn<O extends Dimension>(atIdx: number): MutableRow<O, T>;
     foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G;
     foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G;
@@ -287,16 +287,16 @@ class GenericMutableRow<M extends Dimension, T extends MatrixContent> extends Ge
       }(this)
   }
 
-  withAddedRow<O extends Dimension = 2>(row: Row<M, T>, atIdx: number): MutableMatrix<O, M, T> {
-    return super.withAddedRow(row, atIdx) as MutableMatrix<O, M, T>;
+  withAddedRow(row: Row<M, T>, atIdx: number): MutableMatrix<2, M, T> {
+    return super.withAddedRow(row, atIdx) as MutableMatrix<2, M, T>;
   }
 
   withAddedColumn<O extends Dimension>(column: Column<1, T>, atIdx: number): MutableRow<O, T> {
     return super.withAddedColumn(column, atIdx) as MutableRow<O, T>;
   }
 
-  withoutRow<O extends Dimension = 0>(atIdx: number): MutableMatrix<O, M, T> {
-    return super.withoutRow(atIdx) as MutableMatrix<O, M, T>;
+  withoutRow(atIdx: number): MutableMatrix<0, M, T> {
+    return super.withoutRow(atIdx) as MutableMatrix<0, M, T>;
   }
 
   withoutColumn<O extends Dimension>(atIdx: number): MutableRow<O, T> {
@@ -315,9 +315,9 @@ interface MutableColumn<N extends Dimension, T extends MatrixContent> extends Mu
     getScaled(other: T): MutableColumn<N, T>;
     mapped<G extends MatrixContent>(mapper: (f: T) => G): MutableColumn<N, G>;
     withAddedRow<O extends Dimension>(row: Row<1, T>, atIdx: number): MutableColumn<O, T>;
-    withAddedColumn<O extends Dimension = 2>(column: Column<N, T>, atIdx: number): MutableMatrix<N, O, T>;
+    withAddedColumn(column: Column<N, T>, atIdx: number): MutableMatrix<N, 2, T>;
     withoutRow<O extends Dimension>(atIdx: number): MutableColumn<O, T>;
-    withoutColumn<O extends Dimension = 0>(atIdx: number): MutableMatrix<N, O, T>;
+    withoutColumn(atIdx: number): MutableMatrix<N, 0, T>;
     foldLeft<G extends any>(f: (acc: G, value: T) => G, init: G): G;
     foldRight<G extends any>(f: (acc: G, value: T) => G, init: G): G;
 }
@@ -417,16 +417,16 @@ class GenericMutableColumn<N extends Dimension, T extends MatrixContent> extends
     return super.withAddedRow(row, atIdx) as MutableColumn<O, T>;
   }
 
-  withAddedColumn<O extends Dimension = 2>(column: Column<N, T>, atIdx: number): MutableMatrix<N, O, T> {
-    return super.withAddedColumn(column, atIdx) as MutableMatrix<N, O, T>;
+  withAddedColumn(column: Column<N, T>, atIdx: number): MutableMatrix<N, 2, T> {
+    return super.withAddedColumn(column, atIdx) as MutableMatrix<N, 2, T>;
   }
 
   withoutRow<O extends Dimension>(atIdx: number): MutableColumn<O, T> {
     return super.withoutRow(atIdx) as MutableColumn<O, T>;
   }
 
-  withoutColumn<O extends Dimension = 0>(atIdx: number): MutableMatrix<N, O, T> {
-    return super.withoutColumn(atIdx) as MutableMatrix<N, O, T>;
+  withoutColumn(atIdx: number): MutableMatrix<N, 0, T> {
+    return super.withoutColumn(atIdx) as MutableMatrix<N, 0, T>;
   }
 
 }

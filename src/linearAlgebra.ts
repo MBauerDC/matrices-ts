@@ -1,14 +1,19 @@
-import { Dimension, GenericMatrix, Matrix, Row } from "./matrix";
+import { Dimension, GenericMatrix, Matrix, MatrixContent, matrixContentAdder, matrixContentMultiplier, Row } from "./matrix";
 import { GenericSparseRow } from "./sparse";
 
-    function dotProduct<N extends Dimension, M extends Matrix<1, N, number>|Matrix<N, 1, number>>(a: M, b: M): number {
-        let result = 0;
-        const areColumns = a.m === 1;
-        const size = areColumns ? a.n : a.m;
-        const aGetter = areColumns ? (i: number) => a.getValue(i, 0) : (i: number) => a.getValue(0, i);
-        const bGetter = areColumns ? (i: number) => b.getValue(i, 0) : (i: number) => b.getValue(0, i);
-        for (let i = 0; i < size; i++) {
-            result += aGetter(i) * bGetter(i);
+    function dotProduct<N extends Dimension, T extends MatrixContent,  R extends Matrix<1, N, T>, C extends Matrix<N, 1, T>>(a: R|C, b: R|C): T {
+        let result: T = 0 as T;
+        const aIsColumn = a.m === 1;
+        const bIsColumn = b.m === 1;
+        const aSize = aIsColumn ? a.n : a.m;
+        const bSize = bIsColumn ? b.n : b.m;
+        if (aSize !== bSize) {
+            throw new Error("Cannot calculate dot product of vectors of different sizes");
+        }
+        const aGetter = aIsColumn ? (i: number) => a.getValue(i, 0) : (i: number) => a.getValue(0, i);
+        const bGetter = bIsColumn ? (i: number) => b.getValue(i, 0) : (i: number) => b.getValue(0, i);
+        for (let i = 0; i < aSize; i++) {
+            result = matrixContentAdder(result, matrixContentMultiplier(aGetter(i), bGetter(i)));
         }
         return result;
     }

@@ -1,4 +1,5 @@
-import { GenericMutableMatrix, MutableColumn, MutableMatrix, MutableRow } from "./mutable";
+import { GPU, IKernelRunShortcut, KernelFunction } from "../node_modules/gpu.js/src/index";
+import { dotProduct } from "./linearAlgebra";
 
 type Dimension = number;
 type MatrixContent = number|Array<MatrixContent>|Matrix<Dimension, Dimension, MatrixContent>;
@@ -68,7 +69,8 @@ const matrixContentScaler: <T extends MatrixContent>(a: T, s: number) => T = <T 
 interface Matrix<N extends Dimension, M extends Dimension, F extends MatrixContent> extends Iterable<F> {
     readonly n: N;
     readonly m: M;
-    getValue(i: number, j: number): F; 
+    getAsArray(): F[][];
+    getValue(i: number, j: number): F;     
     getTranspose(): Matrix<M, N, F>;
     generateRow(i: number): Generator<F>;
     generateColumn(j: number): Generator<F>;
@@ -93,11 +95,12 @@ interface Matrix<N extends Dimension, M extends Dimension, F extends MatrixConte
 }
 
 type InternalMutableMatrixData<N extends Dimension, M extends Dimension, T extends MatrixContent> = {
-            getValue(i: number, j: number): T,
-            setValue(i: number, j: number, newValue: T): void,
-            withNewValue(i: number, j: number, newValue: T): T[][]|Row<M, T>[]|Column<N, T>[],
-            at(i: number): T[]|Row<M, T>|Column<N, T>
-        };
+    getValue(i: number, j: number): T,
+    setValue(i: number, j: number, newValue: T): void,
+    withNewValue(i: number, j: number, newValue: T): T[][]|Row<M, T>[]|Column<N, T>[],
+    at(i: number): T[]|Row<M, T>|Column<N, T>,
+    getArrayData(): T[][];
+};
 
 class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixContent> implements Matrix<N, M, T> {
   
@@ -130,6 +133,9 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
                         throw new Error('Invalid row index.');
                     }
                     return arrData[i];
+                },
+                getArrayData(): T[][] {
+                  return arrData;
                 }
             };
     }
@@ -163,6 +169,9 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
                     throw new Error('Invalid row index.');
                 }
                 return rowData[i];
+            },
+            getArrayData(): T[][] {
+              return rowData.map(r => Array.from(r.generateRow(0)));
             }
         };
     }
@@ -196,6 +205,17 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
           throw new Error('Invalid column index.');
         }
         return columnData[i];
+      },
+      getArrayData(): T[][] {
+        const rows: T[][] = [];
+        for (let i = 0; i < n; i++) {
+          const row: T[] = [];
+          for (let j = 0; j < m; j++) {
+            row.push(columnData[j].getValue(i, 0));
+          }
+          rows.push(row);
+        }
+        return rows;
       }
     }
   }
@@ -221,7 +241,11 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     this.referenceData = refData;
   }
 
-  public getValue(i: number, j: number): T {
+  getAsArray(): T[][] {
+    return this.referenceData.getArrayData();
+  }
+
+  getValue(i: number, j: number): T {
     if (i >= this.n || i < 0 || j >= this.m || j < 0) {
         throw new Error('Invalid matrix index.');
     }
@@ -229,7 +253,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
   }
 
 
-  public *generateRow(i: number): Generator<T> {
+  *generateRow(i: number): Generator<T> {
     if (i >= this.n || i < 0) {
         throw new Error('Invalid row index.');
     }
@@ -238,7 +262,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     }
   }
 
-  public *generateColumn(j: number): Generator<T> {
+  *generateColumn(j: number): Generator<T> {
     if (j >= this.m || j < 0) {
         throw new Error('Invalid column index.');
     }
@@ -247,7 +271,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     }
   }
 
-  public getRow(i: number): Row<M, T> {
+  getRow(i: number): Row<M, T> {
     if (i >= this.n || i < 0) {
         throw new Error('Invalid row index.');
     }
@@ -258,7 +282,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericRow<M, T>(arr, this.m);
   }
 
-  public getColumn(j: number): Column<N, T> {
+  getColumn(j: number): Column<N, T> {
     if (j >= this.m || j < 0) {
         throw new Error('Invalid column index.');
     }
@@ -269,7 +293,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericColumn<N, T>(data, this.n);
   }
 
-  public withValue(i: number, j: number, value: T): Matrix<N, M, T> {
+  withValue(i: number, j: number, value: T): Matrix<N, M, T> {
     if (i >= this.n || i < 0 || j >= this.m || j < 0) {
       throw new Error('Invalid matrix index.');
     }
@@ -284,7 +308,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<N, M, T>(data, null, null, this.n, this.m);
   }
 
-  public withAdded(other: Matrix<N, M, T>): Matrix<N, M, T> {
+  withAdded(other: Matrix<N, M, T>): Matrix<N, M, T> {
     const data: T[][] = [];
     for (let i = 0; i < this.n; i++) {
       const row: T[] = [];
@@ -296,7 +320,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<N, M, T>(data, null, null, this.n, this.m);
   }
 
-  public withAddedScalar(other: T): Matrix<N,M,T> {
+  withAddedScalar(other: T): Matrix<N,M,T> {
     const data: T[][] = [];
     for (let i = 0; i < this.n; i++) {
       const row: T[] = [];
@@ -308,7 +332,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<N, M, T>(data, null, null, this.n, this.m);
   }
 
-  public withSubtracted(other: Matrix<N, M, T>): Matrix<N, M, T> {
+  withSubtracted(other: Matrix<N, M, T>): Matrix<N, M, T> {
     const data: T[][] = [];
     for (let i = 0; i < this.n; i++) {
       const row: T[] = [];
@@ -320,7 +344,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<N, M, T>(data, null, null, this.n, this.m);
   }
 
-  public withSubtractedScalar(other: T): Matrix<N,M,T> {
+  withSubtractedScalar(other: T): Matrix<N,M,T> {
     const data: T[][] = [];
     for (let i = 0; i < this.n; i++) {
       const row: T[] = [];
@@ -332,7 +356,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<N, M, T>(data, null, null, this.n, this.m);
   }
 
-  public getMultiplication<O extends Dimension>(right: Matrix<M, O, T>): Matrix<N, O, T> {
+  getMultiplication<O extends Dimension>(right: Matrix<M, O, T>): Matrix<N, O, T> {
     const data: T[][] = [];
     for (let i = 0; i < this.n; i++) {
       const row: T[] = [];
@@ -348,7 +372,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<N, O, T>(data, null, null, this.n, right.m);
   }
 
-  public getScaled(other: T): Matrix<N, M, T> {
+  getScaled(other: T): Matrix<N, M, T> {
     const data: T[][] = [];
     for (let i = 0; i < this.n; i++) {
       const row : T[] = [];
@@ -360,7 +384,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<N, M, T>(data, null, null, this.n, this.m);
   }
 
-  public getTranspose(): Matrix<M, N, T> {      
+  getTranspose(): Matrix<M, N, T> {      
     const data: T[][] = [];
     for (let i = 0; i < this.m; i++) {
       const row: T[] = [];
@@ -372,7 +396,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<M, N, T>(data, null, null, this.m, this.n);
   }
 
-  public mapped<G extends MatrixContent>(f: (value: T) => G): Matrix<N, M, G> {
+  mapped<G extends MatrixContent>(f: (value: T) => G): Matrix<N, M, G> {
     const data: G[][] = [];
     for (let i = 0; i < this.n; i++) {
       const row: G[] = [];
@@ -384,7 +408,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
     return new GenericMatrix<N, M, G>(data, null, null, this.n, this.m);
   }  
 
-  public withAddedRow<O extends Dimension>(newRow: Row<M, T>, atIdx: number): Matrix<O, M, T> {
+  withAddedRow<O extends Dimension>(newRow: Row<M, T>, atIdx: number): Matrix<O, M, T> {
       const rows: Row<M, T>[] = [];
       for (let i = 0; i < this.n; i++) {
         rows.push(this.getRow(i));
@@ -393,7 +417,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
       return new GenericMatrix<O, M, T>(null, rows, null, this.n + 1 as O, this.m);
   }
 
-  public withAddedColumn<O extends Dimension>(newColumn: Column<N, T>, atIdx: number): Matrix<N, O, T> {
+  withAddedColumn<O extends Dimension>(newColumn: Column<N, T>, atIdx: number): Matrix<N, O, T> {
       const columns: Column<N, T>[] = [];
       for (let i = 0; i < this.m; i++) {
         columns.push(this.getColumn(i));
@@ -402,7 +426,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
       return new GenericMatrix<N, O, T>(null, null, columns, this.n, this.m + 1 as O);
   }
 
-  public withoutRow<O extends Dimension>(atIdx: number): Matrix<O, M, T> {
+  withoutRow<O extends Dimension>(atIdx: number): Matrix<O, M, T> {
       const rows: Row<M, T>[] = [];
       for (let i = 0; i < this.n; i++) {
         rows.push(this.getRow(i));
@@ -411,7 +435,7 @@ class GenericMatrix<N extends Dimension, M extends Dimension, T extends MatrixCo
       return new GenericMatrix<O, M, T>(null, rows, null, this.n - 1 as O, this.m);
   }
 
-  public withoutColumn<O extends Dimension>(atIdx: number): Matrix<N, O, T> {
+  withoutColumn<O extends Dimension>(atIdx: number): Matrix<N, O, T> {
       const columns: Column<N, T>[] = [];
       for (let i = 0; i < this.m; i++) {
         columns.push(this.getColumn(i));
@@ -468,7 +492,7 @@ class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMa
       super([arrData], null, null, 1, m);
     }
 
-    public getTranspose(): Column<M, T> {
+    getTranspose(): Column<M, T> {
       const newData: T[] = [];
       for (let i = 0; i < this.m; i++) {
         newData.push(this.referenceData.getValue(0, i));
@@ -514,7 +538,7 @@ class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMa
         return super.mapped(f) as Row<M, F>;
     }
 
-    public at(index: number): T {
+    at(index: number): T {
         if (index < 0 || index >= this.m) {
             throw new Error("Index out of bounds.");
         }
@@ -522,11 +546,11 @@ class GenericRow<M extends Dimension, T extends MatrixContent> extends GenericMa
         return ref instanceof Array ? ref[index] : ref.at(index);
     }
 
-    public [Symbol.iterator](): Iterator<T> {
+    [Symbol.iterator](): Iterator<T> {
         return new class implements Iterator<T> {
             protected index: number = 0;
             constructor(protected row: Row<M, T>) {}
-            public next(): IteratorResult<T> {
+            next(): IteratorResult<T> {
                 if (this.index < this.row.m) {
                     return {value: this.row.at(this.index++), done: false};
                 }
@@ -577,7 +601,7 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
       super(arrData.map((v: T) => [v]), null, null, n, 1);
     }
 
-    public getTranspose(): Row<N, T> {
+    getTranspose(): Row<N, T> {
       const newData: T[] = [];
       for (let i = 0; i < this.n; i++) {
         newData.push(this.referenceData.getValue(i, 0));
@@ -616,14 +640,14 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
         return new GenericRow<1, T>([this.getValue(i, 0)], 1);
     }
 
-    public getColumn(j: number): Column<N, T> {
+    getColumn(j: number): Column<N, T> {
         if (j !== 0) {
             throw new Error(`Column index out of bounds: ${j}`);
         }
         return this;
     }
 
-    public at(index: number): T {
+    at(index: number): T {
         if (index < 0 || index >= this.n) {
             throw new Error("Index out of bounds.");
         }
@@ -631,7 +655,7 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
         return ref instanceof Array ? ref[0] : ref.at(0);
     }
 
-    public [Symbol.iterator](): Iterator<T> {
+    [Symbol.iterator](): Iterator<T> {
         return new class implements Iterator<T> {
             protected index: number = 0;
             constructor(protected column: Column<N, T>) {}
@@ -661,4 +685,54 @@ class GenericColumn<N extends Dimension, T extends MatrixContent> extends Generi
   }
 }
 
-export { Dimension, MatrixContent, Matrix, Row, Column, GenericMatrix, GenericRow, GenericColumn, matrixContentAdder, matrixContentSubtractor, matrixContentScaler, matrixContentMultiplier };
+const matrixMultiplicationKernelFn: KernelFunction = 
+  function(a: number[][], b: number[][], m: number): number {
+    let sum = 0;
+    for (let i = 0; i < m; i++) {
+        sum += a[this.thread.y][i] * b[i][this.thread.x];
+    }
+    return sum;
+  }
+
+class GPUProvider {
+  protected static gpu: GPU|null = null;
+  static getGPU(): GPU {
+    if (GPUProvider.gpu === null) {
+      try {
+        GPUProvider.gpu = new GPU({mode: "gpu"});
+      } catch (e) {
+        GPUProvider.gpu = new GPU({mode: "cpu"});
+      }
+    }
+    return GPUProvider.gpu;
+  }
+}
+const matrixMultiplicationKernel: IKernelRunShortcut = 
+  GPUProvider.getGPU().createKernel(matrixMultiplicationKernelFn)
+  .setDynamicArguments(true)
+  .setDynamicOutput(true);
+
+function multiplyMatrices<N extends Dimension, M extends Dimension, O extends Dimension, T extends MatrixContent>(a: Matrix<N, M, T>, b: Matrix<M, O, T>): Matrix<N, O, T> {
+  const n: number = a.n as number;
+  const m: number = a.m as number;
+  const o: number = b.m as number;
+  if (typeof a.getValue(0,0) === 'number') {
+    const aData: number[][] = a.getAsArray() as number[][];
+    const bData: number[][] = b.getAsArray() as number[][];
+    // width/row-size x height/column-size instead of rows x columns
+    matrixMultiplicationKernel.setOutput([o, n]);
+    const multResult: T[][] = matrixMultiplicationKernel(aData, bData, m) as T[][];
+    return new GenericMatrix(multResult, null, null, n as N, o as O) as Matrix<N, O, T>;
+  }
+  const multResult: T[][] = [];
+  for (let i = 0; i < n; i++) {
+    multResult.push([]);
+    const row = a.getRow(i);
+    for (let j = 0; j < o; j++) {
+      multResult[i].push(dotProduct(row, b.getColumn(j)));
+    }
+  }
+  return new GenericMatrix(multResult, null, null, n as N, o as O) as Matrix<N, O, T>;
+}
+
+export { Dimension, MatrixContent, Matrix, Row, Column, GenericMatrix, GenericRow, GenericColumn, matrixContentAdder, matrixContentSubtractor, matrixContentScaler, matrixContentMultiplier, multiplyMatrices };

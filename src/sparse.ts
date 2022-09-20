@@ -18,6 +18,14 @@ class GenericSparseRow<M extends Dimension, T extends MatrixContent> implements 
     isSparse: true = true;
     readonly n: 1 = 1;
     public constructor(protected sparseData: SparseData<T>, public readonly m: M) {}
+
+    getAsArray(): T[][] {
+        const data: T[][] = [[]];
+        for (let j = 0; j < this.m; j++) {
+            data[0].push(this.sparseData[j] || 0 as T);
+        }
+        return data;
+    }
     
     getSparseData(): SparseData<T> {
         return this.sparseData;
@@ -253,6 +261,14 @@ class GenericSparseColumn<N extends Dimension, T extends MatrixContent> implemen
     isSparse: true = true;
     readonly m: 1 = 1;
     public constructor(protected sparseData: SparseData<T>, public readonly n: N) {}
+
+    getAsArray(): T[][] {
+        const arr: T[][] = [];
+        for (let i = 0; i < this.n; i++) {
+            arr[i] = [this.sparseData[i] || 0 as T];
+        }
+        return arr;
+    }
     
     getSparseData(): SparseData<T> {
         return this.sparseData;
@@ -483,6 +499,10 @@ class SparseRowImmutableMatrix<N extends Dimension, M extends Dimension, T exten
         }
         this.n = n;
         this.m = m;
+    }
+
+    getAsArray(): T[][] {
+        return this.rows.map(row => row.getAsArray()[0]);
     }
 
     at(idx: number): T {
@@ -723,6 +743,15 @@ class SparseColumnImmutableMatrix<N extends Dimension, M extends Dimension, T ex
         if (columns.length !== m) {
             throw new Error('Invalid number of columns.');
         }
+    }
+
+    
+    getAsArray(): T[][] {
+        const rows: T[][] = [];
+        for (let i = 0; i < this.n; i++) {
+            rows.push(Array.from(this.generateRow(i)))
+        }
+        return rows;
     }
     
     at(idx: number): T {

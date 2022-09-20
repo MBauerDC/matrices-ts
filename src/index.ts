@@ -3,6 +3,7 @@ import * as Matrix from "./matrix";
 import * as MutableMatrix from "./mutable";
 import * as SparseMatrix from "./sparse";
 import * as SparseMutableMatrix from "./sparseMutable";
+/*
 console.log("Hello, world!");
 
 type FunctionTiming = <T extends any|void>(fn: () => T) => [T, number];
@@ -27,12 +28,6 @@ const createSparseRandomRow = <D extends Matrix.Dimension>(rowLength: D, density
 };
 
 const initialization: () => [SparseMutableMatrix.SparseRowMutableMatrix<800, 1000, number>, SparseMutableMatrix.SparseRowMutableMatrix<1000, 400, number>] = () => {
-    /*
-  const lengthTenThousandRow = createSparseRandomRow(10000, 0.05, -1000, 1000);
-  console.log(`n:${lengthTenThousandRow.n} m: ${lengthTenThousandRow.m}`);
-  const rowSum = lengthTenThousandRow.foldLeft((acc: number, curr: number) => acc + curr, 0);
-  return rowSum;
-  */
   const rows: SparseMutableMatrix.SparseMutableRow<1000, number>[] = Array.from({length: 800}, () => createSparseRandomRow<1000>(1000, 0.05, -1000, 1000));
   const matrix = new SparseMutableMatrix.SparseRowMutableMatrix<800, 1000, number>(rows, 800, 1000);
   const rows2: SparseMutableMatrix.SparseMutableRow<400, number>[] = Array.from({length: 1000}, () => createSparseRandomRow<400>(400, 0.05, -1000, 1000));
@@ -45,7 +40,7 @@ const matrix2: SparseMutableMatrix.SparseRowMutableMatrix<1000, 400, number> = r
 const initializationDuration:number = result1[1];
 const [multiplicationResult, multiplicationDuration] = fnTimer(() => Matrix.multiplyMatrices(matrix1, matrix2));
 console.log(`Time (ms) initialization: ${initializationDuration}. Time (ms) multiplication: ${multiplicationDuration}`);
-
+*/
 export * from "./matrix";
 export * from "./mutable";
 export * from "./sparse";

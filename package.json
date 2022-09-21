@@ -1,14 +1,20 @@
 {
-    "dependencies": {
-        "bun-types":"^0.1.11"
-    },
-    "devDependencies": {
-        "gpu.js":"^2.15.2",
-        "node-ts":"^5.1.2",
-        "ts-node":"^10.9.1"
-    },
-    "scripts": {
-        "build-ts": "tsc",
-        "watch-ts": "tsc -w"
-    }
+  "name": "@mbauerdc/matrices-ts",
+  "main": "./dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "/dist"
+  ],
+  "dependencies": {
+      "bun-types":"^0.1.11"
+  },
+  "devDependencies": {
+      "gpu.js":"^2.15.2",
+      "node-ts":"^5.1.2",
+      "ts-node":"^10.9.1"
+  },
+  "scripts": {
+      "build-ts": "tsc",
+      "watch-ts": "tsc -w"
+  }
 }

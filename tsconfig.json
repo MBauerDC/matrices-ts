@@ -19,6 +19,7 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "rootDirs": ["src/"],
+    "declaration": true,
     "typeRoots": ["./node_modules/@types"],
     "outDir": "dist",
     "lib": ["ESNext"],
